@@ -1,8 +1,16 @@
 namespace WorkflowEngine.Application.Queries;
 
+/// <summary>
+/// Application-level input for starting a workflow.
+/// </summary>
 public sealed record StartWorkflowRequest
 {
-    public required Guid WorkflowDefinitionId { get; init; }
+    /// <summary>
+    /// Stable, unique code agreed between WorkflowEngine and its calling services.
+    /// This is not a display name or a database identifier; WorkflowEngine resolves
+    /// it to the internal WorkflowDefinitionId.
+    /// </summary>
+    public required string WorkflowDefinitionCode { get; init; }
 
     public required string BusinessType { get; init; }
 

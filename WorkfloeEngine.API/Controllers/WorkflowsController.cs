@@ -33,10 +33,12 @@ public sealed class WorkflowsController : ControllerBase
 
         var userId = User.GetUserId();
 
-        var command = new StartWorkflowCommand(
-            request.WorkflowDefinitionId,
-            userId,
-            request.Input);
+        var command = new StartWorkflowCommand
+        {
+            WorkflowDefinitionCode = request.WorkflowDefinitionCode,
+            StartedBy = userId,
+            Input = request.Input
+        };
 
         var result = await _workflowEngine.StartAsync(
             command,

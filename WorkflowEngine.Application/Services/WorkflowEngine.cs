@@ -65,10 +65,30 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 nameof(command.StartedBy));
         }
 
+        if (string.IsNullOrWhiteSpace(command.WorkflowDefinitionCode))
+        {
+            throw new ArgumentException(
+                "WorkflowDefinitionCode is required.",
+                nameof(command.WorkflowDefinitionCode));
+        }
+
+        // Resolve the stable cross-service code to this service's internal definition.
+        var definition =
+            await _definitionRepository
+                .GetByCodeAsync(
+                    command.WorkflowDefinitionCode,
+                    cancellationToken);
+
+        if (definition is null)
+        {
+            throw new InvalidOperationException(
+                $"Workflow definition with code '{command.WorkflowDefinitionCode}' was not found.");
+        }
+
         var version =
             await _versionRepository
                 .GetPublishedAsync(
-                    command.WorkflowDefinitionId,
+                    definition.Id,
                     cancellationToken);
 
         if (version is null)
@@ -81,7 +101,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         var instance =
             WorkflowInstance.Create(
-                version.WorkflowDefinitionId,
+                definition.Id,
                 version.Id);
 
         instance.Start(
