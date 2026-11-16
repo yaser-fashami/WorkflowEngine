@@ -96,7 +96,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             throw new InvalidOperationException(
                 $"No published workflow version found " +
                 $"for workflow definition " +
-                $"'{command.WorkflowDefinitionId}'.");
+                $"'{command.WorkflowDefinitionCode}'.");
         }
 
         var instance =
