@@ -452,27 +452,6 @@ public sealed class WorkflowEngine : IWorkflowEngine
     public sealed class WorkflowIdempotencyConflictException(string message) : Exception(message);
     public sealed class WorkflowInstanceIdempotencyRaceException(Exception inner) : Exception("Concurrent idempotency insert.", inner);
 
-    private static class WorkflowStartFingerprint
-    {
-        public static string Create(StartWorkflowCommand command)
-        {
-            var payload = System.Text.Json.JsonSerializer.SerializeToElement(new { command.WorkflowDefinitionCode, command.ContractSchemaVersion, command.StartedBy, command.Input });
-            using var stream = new MemoryStream();
-            using (var writer = new System.Text.Json.Utf8JsonWriter(stream)) WriteCanonical(writer, payload);
-            var bytes = System.Text.Encoding.UTF8.GetBytes("workflow-start-fingerprint:v1\n").Concat(stream.ToArray()).ToArray();
-            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
-        }
-        private static void WriteCanonical(System.Text.Json.Utf8JsonWriter writer, System.Text.Json.JsonElement element)
-        {
-            if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
-            {
-                writer.WriteStartObject();
-                foreach (var property in element.EnumerateObject().OrderBy(x => x.Name, StringComparer.Ordinal)) { writer.WritePropertyName(property.Name); WriteCanonical(writer, property.Value); }
-                writer.WriteEndObject();
-            }
-            else if (element.ValueKind == System.Text.Json.JsonValueKind.Array) { writer.WriteStartArray(); foreach (var item in element.EnumerateArray()) WriteCanonical(writer, item); writer.WriteEndArray(); }
-            else element.WriteTo(writer);
-        }
-    }
+
 
 }
