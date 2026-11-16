@@ -33,5 +33,4 @@ public partial class AddWorkflowStartIdempotency : Migration
   migrationBuilder.DropColumn("CorrelationId","WorkflowInstances"); migrationBuilder.DropColumn("IdempotencyKey","WorkflowInstances");
   migrationBuilder.DropColumn("ContractSchemaVersion","WorkflowInstances"); migrationBuilder.DropColumn("InputJson","WorkflowInstances"); migrationBuilder.DropColumn("RequestFingerprint","WorkflowInstances");
  }
- protected override void BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder modelBuilder) { }
 }
