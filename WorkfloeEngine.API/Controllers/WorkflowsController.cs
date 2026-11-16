@@ -22,22 +22,25 @@ public sealed class WorkflowsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<WorkflowInstanceDto>> StartAsync([FromBody] StartWorkflowRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<WorkflowInstanceDto>> StartAsync(
+        [FromBody] StartWorkflowRequest request,
+        CancellationToken cancellationToken)
     {
-        var userId = Guid.Empty;
-            //User.GetUserId();
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized();
+        }
 
-        var command =
-            new StartWorkflowCommand(
-                request.WorkflowDefinitionId,
-                userId,
-                request.Input);
+        var userId = User.GetUserId();
 
-        var result =
-            await _workflowEngine
-                .StartAsync(
-                    command,
-                    cancellationToken);
+        var command = new StartWorkflowCommand(
+            request.WorkflowDefinitionId,
+            userId,
+            request.Input);
+
+        var result = await _workflowEngine.StartAsync(
+            command,
+            cancellationToken);
 
         return Ok(result);
     }
@@ -45,25 +48,29 @@ public sealed class WorkflowsController : ControllerBase
     [HttpPost("{workflowInstanceId:guid}/actions")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType( StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<WorkflowInstanceDto>> ExecuteActionAsync(Guid workflowInstanceId, [FromBody]ExecuteWorkflowActionRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<WorkflowInstanceDto>> ExecuteActionAsync(
+        Guid workflowInstanceId,
+        [FromBody] ExecuteWorkflowActionRequest request,
+        CancellationToken cancellationToken)
     {
-        var userId =
-            User.GetUserId();
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized();
+        }
 
-        var command =
-            new ExecuteWorkflowActionCommand(
-                workflowInstanceId,
-                userId,
-                request.Action,
-                userId);
+        var userId = User.GetUserId();
 
-        var result =
-            await _workflowEngine
-                .ExecuteActionAsync(
-                    command,
-                    cancellationToken);
+        var command = new ExecuteWorkflowActionCommand(
+            workflowInstanceId,
+            userId,
+            request.Action,
+            userId);
+
+        var result = await _workflowEngine.ExecuteActionAsync(
+            command,
+            cancellationToken);
 
         return Ok(result);
     }
