@@ -3,4 +3,5 @@
   <Project Path="WorkflowEngine.Application/WorkflowEngine.Application.csproj" />
   <Project Path="WorkflowEngine.Domain/WorkflowEngine.Domain.csproj" />
   <Project Path="WorkflowEngine.Infrastructure/WorkflowEngine.Infrastructure.csproj" />
+  <Project Path="WorkflowEngine.Application.Tests/WorkflowEngine.Application.Tests.csproj" />
 </Solution>
