@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Workflow.Infrastructure.Persistence;
 
@@ -8,16 +8,22 @@ public sealed class WorkflowDbContextFactory : IDesignTimeDbContextFactory<Workf
 {
     public WorkflowDbContext CreateDbContext(string[] args)
     {
+        var connectionString =
+            Environment.GetEnvironmentVariable(
+                "ConnectionStrings__WorkflowDatabase");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "The design-time connection string is not configured. " +
+                "Set the ConnectionStrings__WorkflowDatabase environment variable.");
+        }
+
         var optionsBuilder =
             new DbContextOptionsBuilder<WorkflowDbContext>();
 
         optionsBuilder.UseSqlServer(
-            "Server=.;" +
-            "Initial Catalog=WorkflowEngineDb;" +
-            "User Id=sa;Password=Tomcat745" +
-            "Trusted_Connection=True;" +
-            "Encrypt=false;" +
-            "TrustServerCertificate=True;",
+            connectionString,
             sqlOptions =>
             {
                 sqlOptions.MigrationsAssembly(
@@ -27,7 +33,6 @@ public sealed class WorkflowDbContextFactory : IDesignTimeDbContextFactory<Workf
                         .Name);
             });
 
-        return new WorkflowDbContext(
-            optionsBuilder.Options);
+        return new WorkflowDbContext(optionsBuilder.Options);
     }
 }
