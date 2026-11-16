@@ -1,10 +1,7 @@
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Workflow.Infrastructure.Persistence;
 #nullable disable
 namespace WorkflowEngine.Infrastructure.Migrations;
-[DbContext(typeof(WorkflowDbContext))]
-[Migration("20261116000000_AddWorkflowStartIdempotency")]
 public partial class AddWorkflowStartIdempotency : Migration
 {
  protected override void Up(MigrationBuilder migrationBuilder)
