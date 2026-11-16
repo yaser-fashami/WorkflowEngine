@@ -32,69 +32,28 @@ public sealed class WorkflowInstance : BaseEntity
                 nameof(workflowVersionId));
         }
 
-        WorkflowDefinitionId =
-            workflowDefinitionId;
-
-        WorkflowVersionId =
-            workflowVersionId;
-
-        Status =
-            WorkflowInstanceStatus.Running;
-
-        StartedAt =
-            DateTimeOffset.UtcNow;
+        WorkflowDefinitionId = workflowDefinitionId;
+        WorkflowVersionId = workflowVersionId;
+        Status = WorkflowInstanceStatus.Draft;
     }
 
-    public Guid WorkflowDefinitionId
-    {
-        get;
-        private set;
-    }
+    public Guid WorkflowDefinitionId { get; private set; }
 
-    public Guid WorkflowVersionId
-    {
-        get;
-        private set;
-    }
+    public Guid WorkflowVersionId { get; private set; }
 
-    public Guid? CurrentNodeId
-    {
-        get;
-        private set;
-    }
+    public Guid? CurrentNodeId { get; private set; }
 
-    public WorkflowInstanceStatus Status
-    {
-        get;
-        private set;
-    }
+    public WorkflowInstanceStatus Status { get; private set; }
 
-    public DateTimeOffset StartedAt
-    {
-        get;
-        private set;
-    }
+    public DateTimeOffset StartedAt { get; private set; }
 
-    public DateTimeOffset? CompletedAt
-    {
-        get;
-        private set;
-    }
+    public DateTimeOffset? CompletedAt { get; private set; }
 
-    public Guid? CompletedBy
-    {
-        get;
-        private set;
-    }
+    public Guid? CompletedBy { get; private set; }
 
-    public Guid? StartedBy
-    {
-        get;
-        private set;
-    }
+    public Guid? StartedBy { get; private set; }
 
-    public IReadOnlyCollection<WorkflowTask> Tasks =>
-        _tasks.AsReadOnly();
+    public IReadOnlyCollection<WorkflowTask> Tasks => _tasks.AsReadOnly();
 
     public static WorkflowInstance Create(
         Guid workflowDefinitionId,
@@ -106,28 +65,23 @@ public sealed class WorkflowInstance : BaseEntity
             workflowVersionId);
     }
 
-    public void AddTask(
-        WorkflowTask task)
+    public void AddTask(WorkflowTask task)
     {
         ArgumentNullException.ThrowIfNull(task);
 
-        if (Status !=
-            WorkflowInstanceStatus.Running)
+        if (Status != WorkflowInstanceStatus.Running)
         {
             throw new InvalidOperationException(
-                "Tasks can only be added to " +
-                "a running workflow instance.");
+                "Tasks can only be added to a running workflow instance.");
         }
 
         if (task.WorkflowInstanceId != Id)
         {
             throw new InvalidOperationException(
-                "Task does not belong to " +
-                "this workflow instance.");
+                "Task does not belong to this workflow instance.");
         }
 
-        if (_tasks.Any(x =>
-            x.Id == task.Id))
+        if (_tasks.Any(x => x.Id == task.Id))
         {
             return;
         }
@@ -140,17 +94,9 @@ public sealed class WorkflowInstance : BaseEntity
         WorkflowTaskType taskType,
         Guid userId)
     {
-        var task =
-            WorkflowTask.Create(
-                Id,
-                nodeId,
-                taskType);
-
-        task.AssignToUser(
-            userId);
-
+        var task = WorkflowTask.Create(Id, nodeId, taskType);
+        task.AssignToUser(userId);
         AddTask(task);
-
         return task;
     }
 
@@ -159,17 +105,9 @@ public sealed class WorkflowInstance : BaseEntity
         WorkflowTaskType taskType,
         string role)
     {
-        var task =
-            WorkflowTask.Create(
-                Id,
-                nodeId,
-                taskType);
-
-        task.AssignToRole(
-            role);
-
+        var task = WorkflowTask.Create(Id, nodeId, taskType);
+        task.AssignToRole(role);
         AddTask(task);
-
         return task;
     }
 
@@ -178,17 +116,9 @@ public sealed class WorkflowInstance : BaseEntity
         WorkflowTaskType taskType,
         Guid departmentId)
     {
-        var task =
-            WorkflowTask.Create(
-                Id,
-                nodeId,
-                taskType);
-
-        task.AssignToDepartment(
-            departmentId);
-
+        var task = WorkflowTask.Create(Id, nodeId, taskType);
+        task.AssignToDepartment(departmentId);
         AddTask(task);
-
         return task;
     }
 
@@ -204,19 +134,12 @@ public sealed class WorkflowInstance : BaseEntity
         if (Status != WorkflowInstanceStatus.Draft)
         {
             throw new InvalidOperationException(
-                $"Workflow instance cannot be started " +
-                $"because its current status is " +
-                $"'{Status}'.");
+                $"Workflow instance cannot be started because its current status is '{Status}'.");
         }
 
-        Status =
-            WorkflowInstanceStatus.Running;
-
-        StartedAt =
-            DateTimeOffset.UtcNow;
-
-        StartedBy =
-            startedBy;
+        Status = WorkflowInstanceStatus.Running;
+        StartedAt = DateTimeOffset.UtcNow;
+        StartedBy = startedBy;
     }
 
     public void MoveTo(Guid nodeId)
@@ -231,24 +154,16 @@ public sealed class WorkflowInstance : BaseEntity
         CurrentNodeId = nodeId;
     }
 
-    public void Complete(
-        Guid performedBy)
+    public void Complete(Guid performedBy)
     {
-        if (Status !=
-            WorkflowInstanceStatus.Running)
+        if (Status != WorkflowInstanceStatus.Running)
         {
             throw new InvalidOperationException(
-                "Only running workflow instances " +
-                "can be completed.");
+                "Only running workflow instances can be completed.");
         }
 
-        Status =
-            WorkflowInstanceStatus.Completed;
-
-        CompletedBy =
-            performedBy;
-
-        CompletedAt =
-            DateTimeOffset.UtcNow;
+        Status = WorkflowInstanceStatus.Completed;
+        CompletedBy = performedBy;
+        CompletedAt = DateTimeOffset.UtcNow;
     }
 }
