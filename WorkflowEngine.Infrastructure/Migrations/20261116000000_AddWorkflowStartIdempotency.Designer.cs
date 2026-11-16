@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Workflow.Infrastructure.Persistence;
@@ -11,6 +12,7 @@ using Workflow.Infrastructure.Persistence;
 namespace WorkflowEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkflowDbContext))]
+    [Migration("20261116000000_AddWorkflowStartIdempotency")]
     partial class AddWorkflowStartIdempotency
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
