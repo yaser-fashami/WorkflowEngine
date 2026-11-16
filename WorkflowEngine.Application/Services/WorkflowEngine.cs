@@ -1,6 +1,7 @@
 ﻿using Workflow.Application.Abstractions;
 using Workflow.Application.Commands;
 using Workflow.Application.DTOs;
+
 using Workflow.Application.Mappers;
 using Workflow.Domain.Entities;
 using Workflow.Domain.Enums;
@@ -72,6 +73,16 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 nameof(command.WorkflowDefinitionCode));
         }
 
+        if (string.IsNullOrWhiteSpace(command.BusinessType) || command.BusinessType.Length > 100) throw new ArgumentException("Invalid BusinessType.", nameof(command.BusinessType));
+        if (string.IsNullOrWhiteSpace(command.BusinessReference) || command.BusinessReference.Length > 200) throw new ArgumentException("Invalid BusinessReference.", nameof(command.BusinessReference));
+        if (string.IsNullOrWhiteSpace(command.CorrelationId) || command.CorrelationId.Length > 100) throw new ArgumentException("Invalid CorrelationId.", nameof(command.CorrelationId));
+        if (string.IsNullOrWhiteSpace(command.IdempotencyKey) || command.IdempotencyKey.Length > 200) throw new ArgumentException("Invalid IdempotencyKey.", nameof(command.IdempotencyKey));
+        if (command.ContractSchemaVersion <= 0) throw new ArgumentOutOfRangeException(nameof(command.ContractSchemaVersion));
+        var inputJson = System.Text.Json.JsonSerializer.Serialize(command.Input);
+        var fingerprint = WorkflowStartFingerprint.Create(command);
+        var existing = await _instanceRepository.GetByIdempotencyKeyAsync(command.BusinessType, command.BusinessReference, command.IdempotencyKey, cancellationToken);
+        if (existing is not null) return await EnsureMatchingReplayAsync(existing, fingerprint, cancellationToken);
+
         // Resolve the stable cross-service code to this service's internal definition.
         var definition =
             await _definitionRepository
@@ -99,10 +110,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 $"'{command.WorkflowDefinitionCode}'.");
         }
 
-        var instance =
-            WorkflowInstance.Create(
-                definition.Id,
-                version.Id);
+        var instance = WorkflowInstance.Create(definition.Id, version.Id, command.BusinessType,
+            command.BusinessReference, command.CorrelationId, command.IdempotencyKey,
+            command.ContractSchemaVersion, inputJson, fingerprint);
 
         instance.Start(
             command.StartedBy);
@@ -119,10 +129,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 $"does not contain a Start node.");
         }
 
-        var context =
-            BuildContext(
-                instance,
-                command.StartedBy);
+        var context = BuildContext(instance, command.StartedBy);
 
         await ExecuteNodeAsync(
             instance,
@@ -136,10 +143,13 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 instance,
                 cancellationToken);
 
-        await _unitOfWork
-            .SaveChangesAsync(
-                cancellationToken);
-
+        try { await _unitOfWork.SaveChangesAsync(cancellationToken); }
+        catch (WorkflowInstanceIdempotencyRaceException)
+        {
+            var winner = await _instanceRepository.GetByIdempotencyKeyAsync(command.BusinessType, command.BusinessReference, command.IdempotencyKey, cancellationToken);
+            if (winner is null) throw;
+            return await EnsureMatchingReplayAsync(winner, fingerprint, cancellationToken);
+        }
         return WorkflowInstanceMapper.ToDto(instance, version);
     }
 
@@ -421,17 +431,48 @@ public sealed class WorkflowEngine : IWorkflowEngine
     }
 
 
-    private static WorkflowContext BuildContext(
-    WorkflowInstance instance,
-    Guid userId)
+    private static WorkflowContext BuildContext(WorkflowInstance instance, Guid userId)
     {
-        return new WorkflowContext(
-            workflowInstanceId: instance.Id,
-            workflowDefinitionId:
-                instance.WorkflowDefinitionId,
-            workflowVersionId:
-                instance.WorkflowVersionId,
-            userId: userId);
+        var context = new WorkflowContext(instance.Id, instance.WorkflowDefinitionId, instance.WorkflowVersionId, userId);
+        using var document = System.Text.Json.JsonDocument.Parse(instance.InputJson);
+        if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
+            foreach (var property in document.RootElement.EnumerateObject()) context.Set(property.Name, property.Value.Clone());
+        return context;
+    }
+
+    private async Task<WorkflowInstanceDto> EnsureMatchingReplayAsync(WorkflowInstance existing, string fingerprint, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(existing.RequestFingerprint, fingerprint, StringComparison.Ordinal))
+            throw new WorkflowIdempotencyConflictException("The IdempotencyKey has already been used with a different request payload.");
+        var version = await _versionRepository.GetByIdAsync(existing.WorkflowVersionId, cancellationToken);
+        if (version is null) throw new InvalidOperationException("Workflow version for existing instance was not found.");
+        return WorkflowInstanceMapper.ToDto(existing, version);
+    }
+
+    public sealed class WorkflowIdempotencyConflictException(string message) : Exception(message);
+    public sealed class WorkflowInstanceIdempotencyRaceException(Exception inner) : Exception("Concurrent idempotency insert.", inner);
+
+    private static class WorkflowStartFingerprint
+    {
+        public static string Create(StartWorkflowCommand command)
+        {
+            var payload = System.Text.Json.JsonSerializer.SerializeToElement(new { command.WorkflowDefinitionCode, command.ContractSchemaVersion, command.StartedBy, command.Input });
+            using var stream = new MemoryStream();
+            using (var writer = new System.Text.Json.Utf8JsonWriter(stream)) WriteCanonical(writer, payload);
+            var bytes = System.Text.Encoding.UTF8.GetBytes("workflow-start-fingerprint:v1\n").Concat(stream.ToArray()).ToArray();
+            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        }
+        private static void WriteCanonical(System.Text.Json.Utf8JsonWriter writer, System.Text.Json.JsonElement element)
+        {
+            if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                writer.WriteStartObject();
+                foreach (var property in element.EnumerateObject().OrderBy(x => x.Name, StringComparer.Ordinal)) { writer.WritePropertyName(property.Name); WriteCanonical(writer, property.Value); }
+                writer.WriteEndObject();
+            }
+            else if (element.ValueKind == System.Text.Json.JsonValueKind.Array) { writer.WriteStartArray(); foreach (var item in element.EnumerateArray()) WriteCanonical(writer, item); writer.WriteEndArray(); }
+            else element.WriteTo(writer);
+        }
     }
 
 }

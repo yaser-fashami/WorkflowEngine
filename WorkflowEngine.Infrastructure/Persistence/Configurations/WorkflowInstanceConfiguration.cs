@@ -22,9 +22,16 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
                 x => x.WorkflowDefinitionId)
             .IsRequired();
 
-        builder.Property(
-                x => x.WorkflowVersionId)
-            .IsRequired();
+        builder.Property(x => x.WorkflowVersionId).IsRequired();
+        builder.Property(x => x.BusinessType).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.BusinessReference).IsRequired().HasMaxLength(200);
+        builder.Property(x => x.CorrelationId).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.IdempotencyKey).IsRequired().HasMaxLength(200);
+        builder.Property(x => x.ContractSchemaVersion).IsRequired();
+        builder.Property(x => x.InputJson).IsRequired();
+        builder.Property(x => x.RequestFingerprint).IsRequired().HasMaxLength(64).IsFixedLength();
+        builder.HasIndex(x => new { x.BusinessType, x.BusinessReference, x.IdempotencyKey })
+            .IsUnique().HasDatabaseName("UX_WorkflowInstances_BusinessScope_IdempotencyKey");
 
         builder.Property(
                 x => x.CurrentNodeId);

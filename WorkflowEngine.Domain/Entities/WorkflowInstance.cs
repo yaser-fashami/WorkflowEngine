@@ -14,8 +14,10 @@ public sealed class WorkflowInstance : BaseEntity
 
     private WorkflowInstance(
         Guid id,
-        Guid workflowDefinitionId,
-        Guid workflowVersionId)
+        Guid workflowDefinitionId, Guid workflowVersionId,
+        string businessType, string businessReference, string correlationId,
+        string idempotencyKey, int contractSchemaVersion, string inputJson,
+        string requestFingerprint)
         : base(id)
     {
         if (workflowDefinitionId == Guid.Empty)
@@ -32,14 +34,31 @@ public sealed class WorkflowInstance : BaseEntity
                 nameof(workflowVersionId));
         }
 
+        if (string.IsNullOrWhiteSpace(businessType) || businessType.Length > 100) throw new ArgumentException("Invalid business type.", nameof(businessType));
+        if (string.IsNullOrWhiteSpace(businessReference) || businessReference.Length > 200) throw new ArgumentException("Invalid business reference.", nameof(businessReference));
+        if (string.IsNullOrWhiteSpace(correlationId) || correlationId.Length > 100) throw new ArgumentException("Invalid correlation id.", nameof(correlationId));
+        if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 200) throw new ArgumentException("Invalid idempotency key.", nameof(idempotencyKey));
+        if (contractSchemaVersion <= 0) throw new ArgumentOutOfRangeException(nameof(contractSchemaVersion));
+        ArgumentNullException.ThrowIfNull(inputJson);
+        if (string.IsNullOrWhiteSpace(requestFingerprint) || requestFingerprint.Length != 64) throw new ArgumentException("A SHA-256 fingerprint is required.", nameof(requestFingerprint));
         WorkflowDefinitionId = workflowDefinitionId;
         WorkflowVersionId = workflowVersionId;
+        BusinessType = businessType; BusinessReference = businessReference; CorrelationId = correlationId;
+        IdempotencyKey = idempotencyKey; ContractSchemaVersion = contractSchemaVersion;
+        InputJson = inputJson; RequestFingerprint = requestFingerprint;
         Status = WorkflowInstanceStatus.Draft;
     }
 
     public Guid WorkflowDefinitionId { get; private set; }
 
     public Guid WorkflowVersionId { get; private set; }
+    public string BusinessType { get; private set; } = null!;
+    public string BusinessReference { get; private set; } = null!;
+    public string CorrelationId { get; private set; } = null!;
+    public string IdempotencyKey { get; private set; } = null!;
+    public int ContractSchemaVersion { get; private set; }
+    public string InputJson { get; private set; } = "{}";
+    public string RequestFingerprint { get; private set; } = null!;
 
     public Guid? CurrentNodeId { get; private set; }
 
@@ -56,13 +75,14 @@ public sealed class WorkflowInstance : BaseEntity
     public IReadOnlyCollection<WorkflowTask> Tasks => _tasks.AsReadOnly();
 
     public static WorkflowInstance Create(
-        Guid workflowDefinitionId,
-        Guid workflowVersionId)
+        Guid workflowDefinitionId, Guid workflowVersionId,
+        string businessType, string businessReference, string correlationId,
+        string idempotencyKey, int contractSchemaVersion, string inputJson,
+        string requestFingerprint)
     {
-        return new WorkflowInstance(
-            Guid.NewGuid(),
-            workflowDefinitionId,
-            workflowVersionId);
+        return new WorkflowInstance(Guid.NewGuid(), workflowDefinitionId, workflowVersionId,
+            businessType, businessReference, correlationId, idempotencyKey,
+            contractSchemaVersion, inputJson, requestFingerprint);
     }
 
     public void AddTask(WorkflowTask task)

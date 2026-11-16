@@ -1,17 +1,12 @@
 namespace Workflow.Api.Contracts;
-
-/// <summary>
-/// HTTP contract for starting a workflow.
-/// </summary>
 public sealed class StartWorkflowRequest
 {
-    /// <summary>
-    /// Stable, unique code agreed between WorkflowEngine and its calling services.
-    /// This is the integration identifier: it is not a display name and must not
-    /// expose or depend on WorkflowDefinitionId from the WorkflowEngine database.
-    /// WorkflowEngine resolves this code to its internal definition identifier.
-    /// </summary>
+    /// <summary>Stable cross-service workflow code; not a display name or database identifier.</summary>
     public required string WorkflowDefinitionCode { get; init; }
-
+    public required string BusinessType { get; init; }
+    public required string BusinessReference { get; init; }
+    public required string CorrelationId { get; init; }
+    public required string IdempotencyKey { get; init; }
+    public required int ContractSchemaVersion { get; init; }
     public object? Input { get; init; }
 }

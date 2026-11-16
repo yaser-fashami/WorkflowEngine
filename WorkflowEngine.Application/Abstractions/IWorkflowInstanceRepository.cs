@@ -11,6 +11,8 @@ public interface IWorkflowInstanceRepository
     Task<WorkflowInstance?> GetByIdWithTasksAsync(
         Guid id,
         CancellationToken cancellationToken = default);
+    Task<WorkflowInstance?> GetByIdempotencyKeyAsync(string businessType, string businessReference,
+        string idempotencyKey, CancellationToken cancellationToken = default);
 
     Task AddAsync(
         WorkflowInstance instance,

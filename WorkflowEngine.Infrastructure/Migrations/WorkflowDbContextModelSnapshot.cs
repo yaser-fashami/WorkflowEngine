@@ -70,6 +70,13 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("BusinessType").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<string>("BusinessReference").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("CorrelationId").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<string>("IdempotencyKey").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<int>("ContractSchemaVersion").HasColumnType("int");
+                    b.Property<string>("InputJson").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<string>("RequestFingerprint").IsRequired().HasMaxLength(64).IsFixedLength().HasColumnType("nchar(64)");
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -105,6 +112,8 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BusinessType", "BusinessReference", "IdempotencyKey").IsUnique()
+                        .HasDatabaseName("UX_WorkflowInstances_BusinessScope_IdempotencyKey");
                     b.HasIndex("CurrentNodeId")
                         .HasDatabaseName("IX_WorkflowInstances_CurrentNodeId");
 

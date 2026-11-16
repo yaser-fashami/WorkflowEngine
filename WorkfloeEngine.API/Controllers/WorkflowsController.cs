@@ -4,6 +4,7 @@ using Workflow.Api.Extensions;
 using Workflow.Application.Abstractions;
 using Workflow.Application.DTOs;
 using Workflow.Application.Commands;
+using Workflow.Application.Services;
 
 namespace Workflow.Api.Controllers;
 
@@ -22,6 +23,7 @@ public sealed class WorkflowsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<WorkflowInstanceDto>> StartAsync(
         [FromBody] StartWorkflowRequest request,
         CancellationToken cancellationToken)
@@ -36,15 +38,14 @@ public sealed class WorkflowsController : ControllerBase
         var command = new StartWorkflowCommand
         {
             WorkflowDefinitionCode = request.WorkflowDefinitionCode,
-            StartedBy = userId,
-            Input = request.Input
+            StartedBy = userId, BusinessType = request.BusinessType, BusinessReference = request.BusinessReference,
+            CorrelationId = request.CorrelationId, IdempotencyKey = request.IdempotencyKey,
+            ContractSchemaVersion = request.ContractSchemaVersion, Input = request.Input
         };
 
-        var result = await _workflowEngine.StartAsync(
-            command,
-            cancellationToken);
-
-        return Ok(result);
+        try { return Ok(await _workflowEngine.StartAsync(command, cancellationToken)); }
+        catch (WorkflowEngine.WorkflowIdempotencyConflictException exception)
+        { return Conflict(new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Idempotency key conflict", Detail = exception.Message }); }
     }
 
     [HttpPost("{workflowInstanceId:guid}/actions")]
