@@ -265,6 +265,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
         if (actorUserId == Guid.Empty)
             throw new ArgumentException("Actor user id is required.", nameof(actorUserId));
 
+        if (string.IsNullOrWhiteSpace(action))
+            throw new ArgumentException("Action is required.", nameof(action));
+
         var instance = await _instanceRepository.GetByIdWithTasksAsync(
             workflowInstanceId,
             cancellationToken);
@@ -290,6 +293,14 @@ public sealed class WorkflowEngine : IWorkflowEngine
         if (currentNode is null)
             throw new KeyNotFoundException($"Workflow node {task.WorkflowNodeId} was not found.");
 
+        var isAuthorized = await _taskAuthorizationService.CanExecuteAsync(
+            task,
+            actorUserId,
+            cancellationToken);
+
+        if (!isAuthorized)
+            return new AuthorizationCheckDto(false, "NOT_ASSIGNED", "User is not assigned to this task.");
+
         var context = BuildContext(instance);
         var transition = await _transitionResolver.ResolveAsync(
             currentNode,
@@ -297,17 +308,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
             context,
             cancellationToken);
 
-        if (transition is null)
-            return new AuthorizationCheckDto(false, "ACTION_NOT_AVAILABLE", "The requested action is not available for this task.");
-
-        var isAuthorized = await _taskAuthorizationService.CanExecuteAsync(
-            task,
-            actorUserId,
-            cancellationToken);
-
-        return isAuthorized
-            ? new AuthorizationCheckDto(true, "AUTHORIZED", "User is authorized to execute this action.")
-            : new AuthorizationCheckDto(false, "NOT_ASSIGNED", "User is not assigned to this task.");
+        return transition is null
+            ? new AuthorizationCheckDto(false, "ACTION_NOT_AVAILABLE", "The requested action is not available for this task.")
+            : new AuthorizationCheckDto(true, "AUTHORIZED", "User is authorized to execute this action.");
     }
 
     public async Task<WorkflowInstanceDto> ExecuteActionAsync(
@@ -318,6 +321,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         if (command.PerformedBy == Guid.Empty)
             throw new ArgumentException("PerformedBy is required.", nameof(command));
+
+        if (string.IsNullOrWhiteSpace(command.Action))
+            throw new ArgumentException("Action is required.", nameof(command));
 
         var instance = await _instanceRepository.GetByIdWithTasksAsync(
             command.WorkflowInstanceId,
@@ -347,6 +353,15 @@ public sealed class WorkflowEngine : IWorkflowEngine
         var wasCompleted = instance.Status == WorkflowInstanceStatus.Completed;
         var context = BuildContext(instance);
 
+        // Re-check User Assignment at execution time; a prior authorization-check is not reusable.
+        var isAuthorized = await _taskAuthorizationService.CanExecuteAsync(
+            task,
+            command.PerformedBy,
+            cancellationToken);
+
+        if (!isAuthorized)
+            throw new UnauthorizedAccessException("User is not assigned to this task.");
+
         // Resolve the requested action before mutating the task or workflow instance.
         var transition = await _transitionResolver.ResolveAsync(
             currentNode,
@@ -362,15 +377,6 @@ public sealed class WorkflowEngine : IWorkflowEngine
         if (targetNode is null)
             throw new KeyNotFoundException(
                 $"Target node '{transition.TargetNodeId}' was not found in workflow version '{version.Id}'.");
-
-        // Re-check User Assignment at execution time; a prior authorization-check is not reusable.
-        var isAuthorized = await _taskAuthorizationService.CanExecuteAsync(
-            task,
-            command.PerformedBy,
-            cancellationToken);
-
-        if (!isAuthorized)
-            throw new UnauthorizedAccessException("User is not assigned to this task.");
 
         // First approver wins.
         task.Complete(command.PerformedBy);
