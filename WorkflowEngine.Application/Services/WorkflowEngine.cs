@@ -65,11 +65,11 @@ public sealed class WorkflowEngine : IWorkflowEngine
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        if (command.StartedBy == Guid.Empty)
+        if (string.IsNullOrWhiteSpace(command.StartedByService))
         {
             throw new ArgumentException(
-                "StartedBy is required.",
-                nameof(command.StartedBy));
+                "StartedByService is required.",
+                nameof(command.StartedByService));
         }
 
         if (string.IsNullOrWhiteSpace(command.WorkflowDefinitionCode))
@@ -134,8 +134,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             command.ContractSchemaVersion, inputJson, fingerprint,
             command.DocumentId, command.DocumentVersion, command.DocumentHash);
 
-        instance.Start(
-            command.StartedBy);
+        instance.Start(command.StartedByService);
 
         var startNode =
             version.Nodes
@@ -149,13 +148,14 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 $"does not contain a Start node.");
         }
 
-        var context = BuildContext(instance, command.StartedBy);
+        var context = BuildContext(instance);
 
         await ExecuteNodeAsync(
             instance,
             version,
             startNode,
             context,
+            completedBy: null,
             cancellationToken);
 
         if (instance.Status == WorkflowInstanceStatus.Completed)
@@ -181,6 +181,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         WorkflowVersion version,
         WorkflowNode node,
         WorkflowContext context,
+        Guid? completedBy,
         CancellationToken cancellationToken)
     {
         var transition =
@@ -206,6 +207,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
                     version,
                     transition,
                     context,
+                    completedBy,
                     cancellationToken);
 
                 break;
@@ -234,8 +236,14 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
             case WorkflowNodeType.End:
 
-                instance.Complete(
-                    context.UserId);
+                if (completedBy.HasValue)
+                {
+                    instance.Complete(completedBy.Value);
+                }
+                else
+                {
+                    instance.CompleteAutomatically();
+                }
 
                 break;
 
@@ -310,9 +318,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         var wasCompleted = instance.Status == WorkflowInstanceStatus.Completed;
 
-        var context = BuildContext(
-                instance,
-                command.PerformedBy);
+        var context = BuildContext(instance);
 
         // First approver wins.
         task.Complete(command.PerformedBy);
@@ -352,6 +358,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             version,
             targetNode,
             context,
+            completedBy: command.PerformedBy,
             cancellationToken);
 
         if (!wasCompleted && instance.Status == WorkflowInstanceStatus.Completed)
@@ -433,6 +440,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         WorkflowVersion version,
         WorkflowTransition transition,
         WorkflowContext context,
+        Guid? completedBy,
         CancellationToken cancellationToken)
     {
         instance.MoveTo(transition.TargetNodeId);
@@ -455,6 +463,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             version,
             targetNode,
             context,
+            completedBy,
             cancellationToken);
     }
 
@@ -479,9 +488,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
         return _workflowOutbox.AddAsync(integrationEvent, cancellationToken);
     }
 
-    private static WorkflowContext BuildContext(WorkflowInstance instance, Guid userId)
+    private static WorkflowContext BuildContext(WorkflowInstance instance)
     {
-        var context = new WorkflowContext(instance.Id, instance.WorkflowDefinitionId, instance.WorkflowVersionId, userId);
+        var context = new WorkflowContext(instance.Id, instance.WorkflowDefinitionId, instance.WorkflowVersionId);
         using var document = System.Text.Json.JsonDocument.Parse(instance.InputJson);
         if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object)
             foreach (var property in document.RootElement.EnumerateObject()) context.Set(property.Name, property.Value.Clone());
