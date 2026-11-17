@@ -1,6 +1,7 @@
 @baseUrl = http://localhost:5296
 @token = REPLACE_WITH_VALID_ACCESS_TOKEN
 @workflowInstanceId = 3fa85f64-5717-4562-b3fc-2c963f66afa6
+@workflowTaskId = 3fa85f64-5717-4562-b3fc-2c963f66afa6
 
 ### Ping API v1
 GET {{baseUrl}}/api/v1/workflows/ping
@@ -29,5 +30,6 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
+  "taskId": "{{workflowTaskId}}",
   "action": "REPLACE_WITH_SUPPORTED_ACTION"
 }
