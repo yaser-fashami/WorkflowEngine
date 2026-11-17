@@ -275,6 +275,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
         if (instance is null)
             throw new KeyNotFoundException($"Workflow instance {workflowInstanceId} was not found.");
 
+        if (instance.Status != WorkflowInstanceStatus.Running)
+            return new AuthorizationCheckDto(false, "TASK_NOT_PENDING", "Workflow instance is not running.");
+
         var task = instance.Tasks.SingleOrDefault(x => x.Id == taskId);
         if (task is null)
             throw new KeyNotFoundException($"Workflow task {taskId} was not found in workflow instance {workflowInstanceId}.");
@@ -331,6 +334,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         if (instance is null)
             throw new KeyNotFoundException($"Workflow instance {command.WorkflowInstanceId} was not found.");
+
+        if (instance.Status != WorkflowInstanceStatus.Running)
+            throw new InvalidOperationException("Workflow instance is not running.");
 
         var task = instance.Tasks.SingleOrDefault(x => x.Id == command.TaskId);
         if (task is null)
