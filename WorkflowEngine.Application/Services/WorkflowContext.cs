@@ -11,18 +11,14 @@ public sealed class WorkflowContext
 
     public Guid WorkflowVersionId { get; }
 
-    public Guid UserId { get; }
-
     public WorkflowContext(
         Guid workflowInstanceId,
         Guid workflowDefinitionId,
-        Guid workflowVersionId,
-        Guid userId)
+        Guid workflowVersionId)
     {
         WorkflowInstanceId = workflowInstanceId;
         WorkflowDefinitionId = workflowDefinitionId;
         WorkflowVersionId = workflowVersionId;
-        UserId = userId;
     }
 
     public void Set(
