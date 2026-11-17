@@ -35,7 +35,7 @@ public sealed class WorkflowInstanceRepositoryReplayTests
                 "{}",
                 new string('A', 64));
 
-            instance.Start(Guid.NewGuid());
+            instance.Start("workflow-tests");
 
             var task = WorkflowTask.Create(
                 instance.Id,
@@ -61,6 +61,8 @@ public sealed class WorkflowInstanceRepositoryReplayTests
 
         Assert.NotNull(replayed);
         Assert.Equal(instanceId, replayed.Id);
+        Assert.Null(replayed.StartedBy);
+        Assert.Equal("workflow-tests", replayed.StartedByService);
 
         var replayDto = replayed.ToDto();
         var replayedTask = Assert.Single(replayDto.Tasks);
