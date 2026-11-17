@@ -9,7 +9,8 @@ using Workflow.Application.Services;
 namespace Workflow.Api.Controllers;
 
 [ApiController]
-[Route("api/workflows")]
+[ApiVersion(1.0)]
+[Route("api/v{version:apiVersion}/workflows")]
 public sealed class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowEngine _workflowEngine;
@@ -38,14 +39,28 @@ public sealed class WorkflowsController : ControllerBase
         var command = new StartWorkflowCommand
         {
             WorkflowDefinitionCode = request.WorkflowDefinitionCode,
-            StartedBy = userId, BusinessType = request.BusinessType, BusinessReference = request.BusinessReference,
-            CorrelationId = request.CorrelationId, IdempotencyKey = request.IdempotencyKey,
-            ContractSchemaVersion = request.ContractSchemaVersion, Input = request.Input
+            StartedBy = userId,
+            BusinessType = request.BusinessType,
+            BusinessReference = request.BusinessReference,
+            CorrelationId = request.CorrelationId,
+            IdempotencyKey = request.IdempotencyKey,
+            ContractSchemaVersion = request.ContractSchemaVersion,
+            Input = request.Input
         };
 
-        try { return Ok(await _workflowEngine.StartAsync(command, cancellationToken)); }
+        try
+        {
+            return Ok(await _workflowEngine.StartAsync(command, cancellationToken));
+        }
         catch (WorkflowEngine.WorkflowIdempotencyConflictException exception)
-        { return Conflict(new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Idempotency key conflict", Detail = exception.Message }); }
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Idempotency key conflict",
+                Detail = exception.Message
+            });
+        }
     }
 
     [HttpPost("{workflowInstanceId:guid}/actions")]
