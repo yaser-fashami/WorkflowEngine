@@ -34,6 +34,8 @@ public sealed class WorkflowInstanceDto
         set;
     }
 
+    public string? StartedByService { get; set; }
+
     public DateTimeOffset? StartedAt
     {
         get;
