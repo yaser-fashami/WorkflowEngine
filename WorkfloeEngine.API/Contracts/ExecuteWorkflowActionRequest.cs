@@ -10,4 +10,7 @@ public sealed class ExecuteWorkflowActionRequest
 
     /// <summary>Business action to execute, as defined by the workflow transition.</summary>
     public required string Action { get; init; }
+
+    /// <summary>Stable identifier of the human actor authenticated by SinaHRM.</summary>
+    public required Guid ActorUserId { get; init; }
 }
