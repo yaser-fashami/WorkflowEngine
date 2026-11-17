@@ -10,10 +10,16 @@ builder.Services
     .AddApiVersioning(options =>
     {
         options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
         options.AssumeDefaultVersionWhenUnspecified = false;
         options.ReportApiVersions = true;
     })
-    .AddMvc();
+    .AddMvc()
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
 
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
