@@ -8,9 +8,11 @@ using Workflow.Application.Services;
 
 namespace Workflow.Api.Controllers;
 
+/// <summary>Version 1 endpoints for starting and advancing workflow instances.</summary>
 [ApiController]
 [ApiVersion(1.0)]
 [Route("api/v{version:apiVersion}/workflows")]
+[Produces("application/json")]
 public sealed class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowEngine _workflowEngine;
@@ -20,11 +22,19 @@ public sealed class WorkflowsController : ControllerBase
         _workflowEngine = workflowEngine;
     }
 
+    /// <summary>Starts a workflow instance for a business object.</summary>
+    /// <param name="request">Workflow definition, business scope, idempotency metadata, and input.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <returns>The created workflow instance, or the existing instance for an idempotent replay.</returns>
+    /// <response code="200">Workflow instance started or existing instance returned.</response>
+    /// <response code="400">Request body is invalid.</response>
+    /// <response code="401">The caller is not authenticated.</response>
+    /// <response code="409">The idempotency key was previously used with a different request.</response>
     [HttpPost("start")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(WorkflowInstanceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<WorkflowInstanceDto>> StartAsync(
         [FromBody] StartWorkflowRequest request,
         CancellationToken cancellationToken)
@@ -63,11 +73,18 @@ public sealed class WorkflowsController : ControllerBase
         }
     }
 
+    /// <summary>Executes an action on a task belonging to a workflow instance.</summary>
+    /// <param name="workflowInstanceId">Identifier of the workflow instance.</param>
+    /// <param name="request">Task identifier and action to execute.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <returns>The updated workflow instance.</returns>
+    /// <response code="200">The action was executed and the updated workflow instance is returned.</response>
+    /// <response code="400">Request body is invalid.</response>
+    /// <response code="401">The caller is not authenticated.</response>
     [HttpPost("{workflowInstanceId:guid}/actions")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(WorkflowInstanceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<WorkflowInstanceDto>> ExecuteActionAsync(
         Guid workflowInstanceId,
         [FromBody] ExecuteWorkflowActionRequest request,
@@ -82,7 +99,7 @@ public sealed class WorkflowsController : ControllerBase
 
         var command = new ExecuteWorkflowActionCommand(
             workflowInstanceId,
-            userId,
+            request.TaskId,
             request.Action,
             userId);
 
@@ -93,7 +110,10 @@ public sealed class WorkflowsController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Checks whether the WorkflowEngine API is responding.</summary>
+    /// <returns>A simple API availability response and the current UTC timestamp.</returns>
     [HttpGet("ping")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult Ping()
     {
         return Ok(new
