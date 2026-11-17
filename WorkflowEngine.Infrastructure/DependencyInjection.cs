@@ -5,6 +5,7 @@ using Workflow.Application.Abstractions;
 using Workflow.Application.Services;
 using Workflow.Infrastructure.Persistence;
 using Workflow.Infrastructure.Persistence.Repositories;
+using Workflow.Infrastructure.Persistence.Outbox;
 
 namespace Workflow.Infrastructure;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
             });
 
         services.AddScoped<IWorkflowUnitOfWork,WorkflowUnitOfWork>();
+        services.AddScoped<IWorkflowOutbox, WorkflowOutboxRepository>();
         services.AddScoped<IWorkflowVersionRepository,WorkflowVersionRepository>();
         services.AddScoped<IWorkflowInstanceRepository,WorkflowInstanceRepository>();
         services.AddScoped<IWorkflowDefinitionRepository,WorkflowDefinitionRepository>();

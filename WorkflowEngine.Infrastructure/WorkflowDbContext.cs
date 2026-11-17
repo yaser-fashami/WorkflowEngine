@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Workflow.Domain.Entities;
+using Workflow.Infrastructure.Persistence.Entities;
 
 namespace Workflow.Infrastructure.Persistence;
 
@@ -33,9 +34,9 @@ public sealed class WorkflowDbContext : DbContext
         WorkflowTasks
         => Set<WorkflowTask>();
 
-    public DbSet<WorkflowTaskAssignment>
-        WorkflowTaskAssignments =>
-        Set<WorkflowTaskAssignment>();
+    public DbSet<WorkflowTaskAssignment> WorkflowTaskAssignments => Set<WorkflowTaskAssignment>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

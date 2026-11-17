@@ -18,6 +18,8 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
     private readonly IWorkflowUnitOfWork _unitOfWork;
 
+    private readonly IWorkflowOutbox _workflowOutbox;
+
     private readonly IWorkflowTaskAuthorizationService _taskAuthorizationService;
 
     private readonly IWorkflowVersionRepository _versionRepository;
@@ -33,6 +35,8 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         IWorkflowUnitOfWork unitOfWork,
 
+        IWorkflowOutbox workflowOutbox,
+
         IWorkflowTaskAuthorizationService taskAuthorizationService,
 
         IWorkflowVersionRepository versionRepository,
@@ -46,6 +50,8 @@ public sealed class WorkflowEngine : IWorkflowEngine
         _assignmentResolver = assignmentResolver;
 
         _unitOfWork = unitOfWork;
+
+        _workflowOutbox = workflowOutbox;
 
         _taskAuthorizationService = taskAuthorizationService;
 
@@ -151,6 +157,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
             startNode,
             context,
             cancellationToken);
+
+        if (instance.Status == WorkflowInstanceStatus.Completed)
+            await EnqueueWorkflowCompletedAsync(instance, cancellationToken);
 
         await _instanceRepository
             .AddAsync(
@@ -299,6 +308,8 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 "Current workflow node not found.");
         }
 
+        var wasCompleted = instance.Status == WorkflowInstanceStatus.Completed;
+
         var context = BuildContext(
                 instance,
                 command.PerformedBy);
@@ -342,6 +353,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
             targetNode,
             context,
             cancellationToken);
+
+        if (!wasCompleted && instance.Status == WorkflowInstanceStatus.Completed)
+            await EnqueueWorkflowCompletedAsync(instance, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -444,6 +458,26 @@ public sealed class WorkflowEngine : IWorkflowEngine
             cancellationToken);
     }
 
+
+    private Task EnqueueWorkflowCompletedAsync(WorkflowInstance instance, CancellationToken cancellationToken)
+    {
+        if (instance.CompletedAt is null)
+            throw new InvalidOperationException("A completed workflow must have a completion timestamp.");
+
+        var integrationEvent = new WorkflowCompletedIntegrationEvent
+        {
+            EventId = Guid.NewGuid(),
+            WorkflowInstanceId = instance.Id,
+            BusinessType = instance.BusinessType,
+            BusinessReference = instance.BusinessReference,
+            CompletedAtUtc = instance.CompletedAt.Value,
+            DocumentId = instance.DocumentId,
+            DocumentVersion = instance.DocumentVersion,
+            DocumentHash = instance.DocumentHash
+        };
+
+        return _workflowOutbox.AddAsync(integrationEvent, cancellationToken);
+    }
 
     private static WorkflowContext BuildContext(WorkflowInstance instance, Guid userId)
     {

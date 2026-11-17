@@ -22,6 +22,23 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Workflow.Infrastructure.Persistence.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("EventId").HasColumnType("uniqueidentifier");
+                    b.Property<int>("AttemptCount").HasColumnType("int");
+                    b.Property<string>("EventType").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<DateTimeOffset>("NextAttemptAtUtc").HasColumnType("datetimeoffset");
+                    b.Property<DateTimeOffset>("OccurredAtUtc").HasColumnType("datetimeoffset");
+                    b.Property<string>("Payload").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<DateTimeOffset?>("LeaseExpiresAtUtc").HasColumnType("datetimeoffset");
+                    b.Property<DateTimeOffset?>("PublishedAtUtc").HasColumnType("datetimeoffset");
+                    b.Property<string>("LastError").HasMaxLength(4000).HasColumnType("nvarchar(4000)");
+                    b.Property<int>("Status").HasColumnType("int");
+                    b.HasKey("EventId");
+                    b.HasIndex("Status", "NextAttemptAtUtc").HasDatabaseName("IX_OutboxMessages_Status_NextAttemptAtUtc");
+                    b.ToTable("OutboxMessages", (string)null);
+                });
+
             modelBuilder.Entity("Workflow.Domain.Entities.WorkflowDefinition", b =>
                 {
                     b.Property<Guid>("Id")
