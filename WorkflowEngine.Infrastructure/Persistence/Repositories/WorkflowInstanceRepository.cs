@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Workflow.Application.Abstractions;
 using Workflow.Domain.Entities;
 
@@ -37,33 +37,36 @@ public sealed class WorkflowInstanceRepository : IWorkflowInstanceRepository
                 cancellationToken);
     }
 
-    public async Task<WorkflowInstance?> GetByIdempotencyKeyAsync(string businessType, string businessReference,
-        string idempotencyKey, CancellationToken cancellationToken = default)
+    public async Task<WorkflowInstance?> GetByIdempotencyKeyAsync(
+        string businessType,
+        string businessReference,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default)
     {
-        return await _dbContext.WorkflowInstances.FirstOrDefaultAsync(x => x.BusinessType == businessType
-            && x.BusinessReference == businessReference && x.IdempotencyKey == idempotencyKey, cancellationToken);
+        return await _dbContext.WorkflowInstances
+            .Include(x => x.Tasks)
+                .ThenInclude(x => x.Assignments)
+            .FirstOrDefaultAsync(
+                x => x.BusinessType == businessType
+                    && x.BusinessReference == businessReference
+                    && x.IdempotencyKey == idempotencyKey,
+                cancellationToken);
     }
 
     public async Task AddAsync(
         WorkflowInstance instance,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(
-            instance);
+        ArgumentNullException.ThrowIfNull(instance);
 
         await _dbContext.WorkflowInstances
-            .AddAsync(
-                instance,
-                cancellationToken);
+            .AddAsync(instance, cancellationToken);
     }
 
-    public void Update(
-        WorkflowInstance instance)
+    public void Update(WorkflowInstance instance)
     {
-        ArgumentNullException.ThrowIfNull(
-            instance);
+        ArgumentNullException.ThrowIfNull(instance);
 
-        _dbContext.WorkflowInstances
-            .Update(instance);
+        _dbContext.WorkflowInstances.Update(instance);
     }
 }
