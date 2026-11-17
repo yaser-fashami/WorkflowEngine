@@ -1,5 +1,7 @@
 ﻿using Workflow.Domain.Entities;
 
+namespace Workflow.Application.Abstractions;
+
 public interface IWorkflowTaskAuthorizationService
 {
     Task<bool> CanExecuteAsync(
