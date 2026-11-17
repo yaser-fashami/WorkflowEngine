@@ -12,7 +12,7 @@ using Workflow.Infrastructure.Persistence;
 namespace WorkflowEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkflowDbContext))]
-    [Migration("20261116000000_AddWorkflowDocumentMetadata")]
+    [Migration("20261117000000_AddWorkflowDocumentMetadata")]
     partial class AddWorkflowDocumentMetadata
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

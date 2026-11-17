@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Workflow.Infrastructure.Persistence;
 
@@ -6,8 +5,6 @@ using Workflow.Infrastructure.Persistence;
 
 namespace WorkflowEngine.Infrastructure.Migrations;
 
-[DbContext(typeof(WorkflowDbContext))]
-[Migration("20261117000000_AddWorkflowDocumentMetadata")]
 public partial class AddWorkflowDocumentMetadata : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
