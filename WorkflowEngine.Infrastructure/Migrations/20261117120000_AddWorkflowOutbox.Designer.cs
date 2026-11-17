@@ -12,7 +12,7 @@ using Workflow.Infrastructure.Persistence;
 namespace WorkflowEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(WorkflowDbContext))]
-    [Migration("20261118000000_AddWorkflowOutbox")]
+    [Migration("20261117120000_AddWorkflowOutbox")]
     partial class AddWorkflowOutbox
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
