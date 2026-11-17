@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Workflow.Application.Mappers;
 using Workflow.Domain.Entities;
 using Workflow.Domain.Enums;
 using Workflow.Infrastructure.Persistence;
@@ -10,16 +11,16 @@ namespace WorkflowEngine.Application.Tests;
 public sealed class WorkflowInstanceRepositoryReplayTests
 {
     [Fact]
-    public async Task GetByIdempotencyKeyAsync_IncludesTasksAndAssignments()
+    public async Task GetByIdempotencyKeyAsync_LoadsTasksAndAssignmentsForReplayDto()
     {
         var options = new DbContextOptionsBuilder<WorkflowDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        var businessType = "EmploymentContract";
-        var businessReference = "contract-125";
-        var idempotencyKey = "request-abc";
-        var instanceId = Guid.NewGuid();
+        const string businessType = "EmploymentContract";
+        const string businessReference = "contract-125";
+        const string idempotencyKey = "request-abc";
+        Guid instanceId;
 
         await using (var writeContext = new WorkflowDbContext(options))
         {
@@ -61,8 +62,8 @@ public sealed class WorkflowInstanceRepositoryReplayTests
         Assert.NotNull(replayed);
         Assert.Equal(instanceId, replayed.Id);
 
-        var replayedTask = Assert.Single(replayed.Tasks);
-        var replayedAssignment = Assert.Single(replayedTask.Assignments);
-        Assert.Equal("HR", replayedAssignment.Role);
+        var replayDto = replayed.ToDto();
+        var replayedTask = Assert.Single(replayDto.Tasks);
+        Assert.Equal("HR", replayedTask.AssignedRole);
     }
 }
