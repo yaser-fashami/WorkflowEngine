@@ -119,6 +119,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<Guid?>("StartedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("StartedByService")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
