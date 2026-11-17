@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Workflow.Application.Abstractions;
 using Workflow.Application.DTOs;
+using Workflow.Infrastructure.Persistence;
 using Workflow.Infrastructure.Persistence.Entities;
 
 namespace Workflow.Infrastructure.Persistence.Outbox;
