@@ -16,10 +16,12 @@ namespace Workflow.Api.Controllers;
 public sealed class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowEngine _workflowEngine;
+    private readonly IConfiguration _configuration;
 
-    public WorkflowsController(IWorkflowEngine workflowEngine)
+    public WorkflowsController(IWorkflowEngine workflowEngine, IConfiguration configuration)
     {
         _workflowEngine = workflowEngine;
+        _configuration = configuration;
     }
 
     /// <summary>Starts a workflow instance for a business object.</summary>
@@ -44,12 +46,24 @@ public sealed class WorkflowsController : ControllerBase
             return Unauthorized();
         }
 
-        var userId = User.GetUserId();
+        var serviceIdClaimType = _configuration["ServiceIdentity:ServiceIdClaimType"];
+        if (string.IsNullOrWhiteSpace(serviceIdClaimType))
+        {
+            return Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Service identity claim is not configured.");
+        }
+
+        var serviceId = User.FindFirst(serviceIdClaimType)?.Value;
+        if (string.IsNullOrWhiteSpace(serviceId))
+        {
+            return Unauthorized();
+        }
 
         var command = new StartWorkflowCommand
         {
             WorkflowDefinitionCode = request.WorkflowDefinitionCode,
-            StartedBy = userId,
+            StartedByService = serviceId,
             BusinessType = request.BusinessType,
             BusinessReference = request.BusinessReference,
             CorrelationId = request.CorrelationId,
