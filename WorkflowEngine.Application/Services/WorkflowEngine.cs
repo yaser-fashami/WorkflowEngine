@@ -78,6 +78,19 @@ public sealed class WorkflowEngine : IWorkflowEngine
         if (string.IsNullOrWhiteSpace(command.CorrelationId) || command.CorrelationId.Length > 100) throw new ArgumentException("Invalid CorrelationId.", nameof(command.CorrelationId));
         if (string.IsNullOrWhiteSpace(command.IdempotencyKey) || command.IdempotencyKey.Length > 200) throw new ArgumentException("Invalid IdempotencyKey.", nameof(command.IdempotencyKey));
         if (command.ContractSchemaVersion <= 0) throw new ArgumentOutOfRangeException(nameof(command.ContractSchemaVersion));
+        var documentMetadataCount = new[] { command.DocumentId, command.DocumentVersion, command.DocumentHash }
+            .Count(value => !string.IsNullOrWhiteSpace(value));
+        if (documentMetadataCount is not 0 and not 3)
+            throw new ArgumentException(
+                "DocumentId, DocumentVersion, and DocumentHash must be supplied together.");
+
+        if (command.DocumentId?.Length > 200)
+            throw new ArgumentOutOfRangeException(nameof(command.DocumentId));
+        if (command.DocumentVersion?.Length > 100)
+            throw new ArgumentOutOfRangeException(nameof(command.DocumentVersion));
+        if (command.DocumentHash?.Length > 256)
+            throw new ArgumentOutOfRangeException(nameof(command.DocumentHash));
+
         var inputJson = System.Text.Json.JsonSerializer.Serialize(command.Input);
         var fingerprint = WorkflowStartFingerprint.Create(command);
         var existing = await _instanceRepository.GetByIdempotencyKeyAsync(command.BusinessType, command.BusinessReference, command.IdempotencyKey, cancellationToken);
@@ -112,7 +125,8 @@ public sealed class WorkflowEngine : IWorkflowEngine
 
         var instance = WorkflowInstance.Create(definition.Id, version.Id, command.BusinessType,
             command.BusinessReference, command.CorrelationId, command.IdempotencyKey,
-            command.ContractSchemaVersion, inputJson, fingerprint);
+            command.ContractSchemaVersion, inputJson, fingerprint,
+            command.DocumentId, command.DocumentVersion, command.DocumentHash);
 
         instance.Start(
             command.StartedBy);

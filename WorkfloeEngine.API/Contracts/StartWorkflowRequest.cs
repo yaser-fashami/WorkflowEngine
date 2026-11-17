@@ -25,6 +25,13 @@ public sealed class StartWorkflowRequest
     /// <summary>Version of the input contract supplied by the calling service.</summary>
     public required int ContractSchemaVersion { get; init; }
 
+    /// <summary>Optional opaque identifier of the associated document.</summary>
+    public string? DocumentId { get; init; }
+    /// <summary>Optional version of the associated document.</summary>
+    public string? DocumentVersion { get; init; }
+    /// <summary>Optional hash of the exact document version.</summary>
+    public string? DocumentHash { get; init; }
+
     /// <summary>Workflow-specific input data.</summary>
     public object? Input { get; init; }
 }

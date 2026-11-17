@@ -36,6 +36,10 @@ public static class WorkflowInstanceMapper
             CompletedAt =
                 instance.CompletedAt,
 
+            DocumentId = instance.DocumentId,
+            DocumentVersion = instance.DocumentVersion,
+            DocumentHash = instance.DocumentHash,
+
             Tasks =
                 instance.Tasks
                     .Select(task =>

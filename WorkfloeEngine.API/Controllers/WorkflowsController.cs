@@ -55,6 +55,9 @@ public sealed class WorkflowsController : ControllerBase
             CorrelationId = request.CorrelationId,
             IdempotencyKey = request.IdempotencyKey,
             ContractSchemaVersion = request.ContractSchemaVersion,
+            DocumentId = request.DocumentId,
+            DocumentVersion = request.DocumentVersion,
+            DocumentHash = request.DocumentHash,
             Input = request.Input
         };
 

@@ -21,6 +21,9 @@ public sealed record StartWorkflowCommand
     public required string CorrelationId { get; init; }
     public required string IdempotencyKey { get; init; }
     public required int ContractSchemaVersion { get; init; }
+    public string? DocumentId { get; init; }
+    public string? DocumentVersion { get; init; }
+    public string? DocumentHash { get; init; }
 
     /// <summary>
     /// Gets the input payload used to initialize the workflow context.

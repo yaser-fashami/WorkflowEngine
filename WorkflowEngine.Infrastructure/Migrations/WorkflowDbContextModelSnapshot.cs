@@ -72,6 +72,10 @@ namespace WorkflowEngine.Infrastructure.Migrations
 
                     b.Property<string>("BusinessType").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
                     b.Property<string>("BusinessReference").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("DocumentId").HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<string>("DocumentVersion").HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<string>("DocumentHash").HasMaxLength(256).HasColumnType("nvarchar(256)");
+
                     b.Property<string>("CorrelationId").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
                     b.Property<string>("IdempotencyKey").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
                     b.Property<int>("ContractSchemaVersion").HasColumnType("int");

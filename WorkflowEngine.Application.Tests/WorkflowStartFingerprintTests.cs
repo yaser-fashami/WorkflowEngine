@@ -43,6 +43,22 @@ public sealed class WorkflowStartFingerprintTests
     }
 
     [Fact]
+    public void Create_ChangesWhenDocumentMetadataChanges()
+    {
+        var baseline = CreateCommand() with
+        {
+            DocumentId = "document-1",
+            DocumentVersion = "version-1",
+            DocumentHash = "hash-1"
+        };
+        var changedHash = baseline with { DocumentHash = "hash-2" };
+
+        Assert.NotEqual(
+            WorkflowStartFingerprint.Create(baseline),
+            WorkflowStartFingerprint.Create(changedHash));
+    }
+
+    [Fact]
     public void Create_ChangesWhenDefinitionCodeOrSchemaVersionChanges()
     {
         var baseline = CreateCommand();

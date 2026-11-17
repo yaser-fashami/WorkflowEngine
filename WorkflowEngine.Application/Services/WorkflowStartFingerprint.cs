@@ -11,18 +11,34 @@ namespace Workflow.Application.Services;
 /// </summary>
 internal static class WorkflowStartFingerprint
 {
-    private const string AlgorithmVersion = "workflow-start-fingerprint:v1\n";
+    private const string LegacyAlgorithmVersion = "workflow-start-fingerprint:v1\n";
+    private const string DocumentAlgorithmVersion = "workflow-start-fingerprint:v2\n";
 
     public static string Create(StartWorkflowCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var payload = JsonSerializer.SerializeToElement(new
-        {
-            command.WorkflowDefinitionCode,
-            command.ContractSchemaVersion,
-            command.Input
-        });
+        var hasDocumentMetadata =
+            !string.IsNullOrWhiteSpace(command.DocumentId) &&
+            !string.IsNullOrWhiteSpace(command.DocumentVersion) &&
+            !string.IsNullOrWhiteSpace(command.DocumentHash);
+
+        var payload = hasDocumentMetadata
+            ? JsonSerializer.SerializeToElement(new
+            {
+                command.WorkflowDefinitionCode,
+                command.ContractSchemaVersion,
+                command.Input,
+                command.DocumentId,
+                command.DocumentVersion,
+                command.DocumentHash
+            })
+            : JsonSerializer.SerializeToElement(new
+            {
+                command.WorkflowDefinitionCode,
+                command.ContractSchemaVersion,
+                command.Input
+            });
 
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -30,7 +46,8 @@ internal static class WorkflowStartFingerprint
             WriteCanonical(writer, payload);
         }
 
-        var prefix = Encoding.UTF8.GetBytes(AlgorithmVersion);
+        var prefix = Encoding.UTF8.GetBytes(
+            hasDocumentMetadata ? DocumentAlgorithmVersion : LegacyAlgorithmVersion);
         var bytes = prefix.Concat(stream.ToArray()).ToArray();
         return Convert.ToHexString(SHA256.HashData(bytes));
     }

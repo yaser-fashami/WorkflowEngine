@@ -17,7 +17,7 @@ public sealed class WorkflowInstance : BaseEntity
         Guid workflowDefinitionId, Guid workflowVersionId,
         string businessType, string businessReference, string correlationId,
         string idempotencyKey, int contractSchemaVersion, string inputJson,
-        string requestFingerprint)
+        string requestFingerprint, string? documentId, string? documentVersion, string? documentHash)
         : base(id)
     {
         if (workflowDefinitionId == Guid.Empty)
@@ -41,11 +41,13 @@ public sealed class WorkflowInstance : BaseEntity
         if (contractSchemaVersion <= 0) throw new ArgumentOutOfRangeException(nameof(contractSchemaVersion));
         ArgumentNullException.ThrowIfNull(inputJson);
         if (string.IsNullOrWhiteSpace(requestFingerprint) || requestFingerprint.Length != 64) throw new ArgumentException("A SHA-256 fingerprint is required.", nameof(requestFingerprint));
+        ValidateDocumentMetadata(documentId, documentVersion, documentHash);
         WorkflowDefinitionId = workflowDefinitionId;
         WorkflowVersionId = workflowVersionId;
         BusinessType = businessType; BusinessReference = businessReference; CorrelationId = correlationId;
         IdempotencyKey = idempotencyKey; ContractSchemaVersion = contractSchemaVersion;
         InputJson = inputJson; RequestFingerprint = requestFingerprint;
+        DocumentId = documentId; DocumentVersion = documentVersion; DocumentHash = documentHash;
         Status = WorkflowInstanceStatus.Draft;
     }
 
@@ -59,6 +61,9 @@ public sealed class WorkflowInstance : BaseEntity
     public int ContractSchemaVersion { get; private set; }
     public string InputJson { get; private set; } = "{}";
     public string RequestFingerprint { get; private set; } = null!;
+    public string? DocumentId { get; private set; }
+    public string? DocumentVersion { get; private set; }
+    public string? DocumentHash { get; private set; }
 
     public Guid? CurrentNodeId { get; private set; }
 
@@ -78,11 +83,22 @@ public sealed class WorkflowInstance : BaseEntity
         Guid workflowDefinitionId, Guid workflowVersionId,
         string businessType, string businessReference, string correlationId,
         string idempotencyKey, int contractSchemaVersion, string inputJson,
-        string requestFingerprint)
+        string requestFingerprint, string? documentId = null, string? documentVersion = null,
+        string? documentHash = null)
     {
         return new WorkflowInstance(Guid.NewGuid(), workflowDefinitionId, workflowVersionId,
             businessType, businessReference, correlationId, idempotencyKey,
-            contractSchemaVersion, inputJson, requestFingerprint);
+            contractSchemaVersion, inputJson, requestFingerprint, documentId, documentVersion, documentHash);
+    }
+
+    private static void ValidateDocumentMetadata(string? documentId, string? documentVersion, string? documentHash)
+    {
+        var count = new[] { documentId, documentVersion, documentHash }.Count(x => !string.IsNullOrWhiteSpace(x));
+        if (count is not 0 and not 3)
+            throw new ArgumentException("DocumentId, DocumentVersion, and DocumentHash must be supplied together.");
+        if (documentId?.Length > 200) throw new ArgumentOutOfRangeException(nameof(documentId));
+        if (documentVersion?.Length > 100) throw new ArgumentOutOfRangeException(nameof(documentVersion));
+        if (documentHash?.Length > 256) throw new ArgumentOutOfRangeException(nameof(documentHash));
     }
 
     public void AddTask(WorkflowTask task)

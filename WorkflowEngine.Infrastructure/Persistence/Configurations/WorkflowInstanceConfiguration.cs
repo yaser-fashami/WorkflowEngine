@@ -30,6 +30,9 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
         builder.Property(x => x.ContractSchemaVersion).IsRequired();
         builder.Property(x => x.InputJson).IsRequired();
         builder.Property(x => x.RequestFingerprint).IsRequired().HasMaxLength(64).IsFixedLength();
+        builder.Property(x => x.DocumentId).HasMaxLength(200);
+        builder.Property(x => x.DocumentVersion).HasMaxLength(100);
+        builder.Property(x => x.DocumentHash).HasMaxLength(256);
         builder.HasIndex(x => new { x.BusinessType, x.BusinessReference, x.IdempotencyKey })
             .IsUnique().HasDatabaseName("UX_WorkflowInstances_BusinessScope_IdempotencyKey");
 

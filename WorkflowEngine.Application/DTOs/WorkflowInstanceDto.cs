@@ -52,6 +52,10 @@ public sealed class WorkflowInstanceDto
         set;
     }
 
+    public string? DocumentId { get; set; }
+    public string? DocumentVersion { get; set; }
+    public string? DocumentHash { get; set; }
+
     public IReadOnlyCollection<WorkflowTaskDto> Tasks
     {
         get;
