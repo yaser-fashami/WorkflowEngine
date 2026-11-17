@@ -1,41 +1,33 @@
-@WorkfloeEngine.API_HostAddress = http://localhost:5296
-
-# GET {{WorkfloeEngine.API_HostAddress}}/api/workflows/start
-# Accept: application/json
-
-
 @baseUrl = http://localhost:5296
-
-### Ping
-GET http://localhost:5296/api/workflows/ping
-###
-
-@token = eyJhbGciOi...
-@workflowDefinitionId = 3fa85f64-5717-4562-b3fc-2c963f66afa6
+@token = REPLACE_WITH_VALID_ACCESS_TOKEN
 @workflowInstanceId = 3fa85f64-5717-4562-b3fc-2c963f66afa6
 
+### Ping API v1
+GET {{baseUrl}}/api/v1/workflows/ping
+Accept: application/json
 
-### Start Workflow
-POST {{baseUrl}}/api/workflows/start
-Content-Type: application/json
-
-{
-  "workflowDefinitionId": "{{workflowDefinitionId}}",
-  "input": {
-    "customerId": "12345",
-    "amount": 1000
-  }
-}
-
-
-### Execute Workflow Action
-POST {{baseUrl}}/api/workflows/{{workflowInstanceId}}/actions
+### Start Workflow v1
+POST {{baseUrl}}/api/v1/workflows/start
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "action": "Approve"
+  "workflowDefinitionCode": "REPLACE_WITH_WORKFLOW_DEFINITION_CODE",
+  "businessType": "REPLACE_WITH_BUSINESS_TYPE",
+  "businessReference": "REPLACE_WITH_BUSINESS_REFERENCE",
+  "correlationId": "REPLACE_WITH_CORRELATION_ID",
+  "idempotencyKey": "REPLACE_WITH_IDEMPOTENCY_KEY",
+  "contractSchemaVersion": 1,
+  "input": {
+    "sample": "replace-with-workflow-input"
+  }
 }
 
+### Execute Workflow Action v1
+POST {{baseUrl}}/api/v1/workflows/{{workflowInstanceId}}/actions
+Authorization: Bearer {{token}}
+Content-Type: application/json
 
-
+{
+  "action": "REPLACE_WITH_SUPPORTED_ACTION"
+}
