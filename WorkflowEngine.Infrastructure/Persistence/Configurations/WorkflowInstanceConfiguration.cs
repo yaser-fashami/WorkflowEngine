@@ -47,6 +47,9 @@ public sealed class WorkflowInstanceConfiguration : IEntityTypeConfiguration<Wor
         builder.Property(
                 x => x.StartedBy);
 
+        builder.Property(x => x.StartedByService)
+            .HasMaxLength(100);
+
         builder.Property(
                 x => x.StartedAt);
 
