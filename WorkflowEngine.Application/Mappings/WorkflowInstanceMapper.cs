@@ -25,13 +25,16 @@ public static class WorkflowInstanceMapper
                 instance.Status.ToString(),
 
             StartedBy =
-                instance.StartedBy.Value,
+                instance.StartedBy,
+
+            StartedByService =
+                instance.StartedByService,
 
             StartedAt =
                 instance.StartedAt,
 
             CompletedBy =
-                instance.CompletedBy.Value,
+                instance.CompletedBy,
 
             CompletedAt =
                 instance.CompletedAt,
