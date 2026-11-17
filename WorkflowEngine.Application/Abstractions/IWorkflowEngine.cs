@@ -10,7 +10,7 @@ public interface IWorkflowEngine
         StartWorkflowCommand command,
         CancellationToken cancellationToken = default);
 
-    Task<WorkflowInstanceDto> ExecuteActionAsync(
+    Task<AuthorizationCheckDto> CheckAuthorizationAsync(\n        Guid workflowInstanceId,\n        Guid taskId,\n        string action,\n        Guid actorUserId,\n        CancellationToken cancellationToken = default);\n\n    Task<WorkflowInstanceDto> ExecuteActionAsync(
         ExecuteWorkflowActionCommand command,
         CancellationToken cancellationToken = default);
 }
