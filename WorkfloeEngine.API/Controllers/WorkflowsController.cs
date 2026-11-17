@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Workflow.Api.Contracts;
-using Workflow.Api.Extensions;
 using Workflow.Application.Abstractions;
 using Workflow.Application.DTOs;
 using Workflow.Application.Commands;
@@ -16,49 +16,27 @@ namespace Workflow.Api.Controllers;
 public sealed class WorkflowsController : ControllerBase
 {
     private readonly IWorkflowEngine _workflowEngine;
-    private readonly IConfiguration _configuration;
 
-    public WorkflowsController(IWorkflowEngine workflowEngine, IConfiguration configuration)
+    public WorkflowsController(IWorkflowEngine workflowEngine)
     {
         _workflowEngine = workflowEngine;
-        _configuration = configuration;
     }
 
     /// <summary>Starts a workflow instance for a business object.</summary>
-    /// <param name="request">Workflow definition, business scope, idempotency metadata, and input.</param>
-    /// <param name="cancellationToken">Request cancellation token.</param>
-    /// <returns>The created workflow instance, or the existing instance for an idempotent replay.</returns>
-    /// <response code="200">Workflow instance started or existing instance returned.</response>
-    /// <response code="400">Request body is invalid.</response>
-    /// <response code="401">The caller is not authenticated.</response>
-    /// <response code="409">The idempotency key was previously used with a different request.</response>
+    [Authorize(Policy = "WorkflowStart")]
     [HttpPost("start")]
     [ProducesResponseType(typeof(WorkflowInstanceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<WorkflowInstanceDto>> StartAsync(
         [FromBody] StartWorkflowRequest request,
         CancellationToken cancellationToken)
     {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return Unauthorized();
-        }
-
-        var serviceIdClaimType = _configuration["ServiceIdentity:ServiceIdClaimType"];
-        if (string.IsNullOrWhiteSpace(serviceIdClaimType))
-        {
-            return Problem(
-                statusCode: StatusCodes.Status503ServiceUnavailable,
-                title: "Service identity claim is not configured.");
-        }
-
-        var serviceId = User.FindFirst(serviceIdClaimType)?.Value;
+        var serviceId = User.FindFirst("service_id")?.Value;
         if (string.IsNullOrWhiteSpace(serviceId))
-        {
             return Unauthorized();
-        }
 
         var command = new StartWorkflowCommand
         {
@@ -88,47 +66,117 @@ public sealed class WorkflowsController : ControllerBase
                 Detail = exception.Message
             });
         }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Invalid workflow start request",
+                Detail = exception.Message
+            });
+        }
+    }
+
+    /// <summary>Checks whether an actor may execute an action on a task.</summary>
+    [Authorize(Policy = "WorkflowExecute")]
+    [HttpPost("{workflowInstanceId:guid}/authorization-check")]
+    [ProducesResponseType(typeof(AuthorizationCheckDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AuthorizationCheckDto>> CheckAuthorizationAsync(
+        Guid workflowInstanceId,
+        [FromBody] CheckWorkflowAuthorizationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.ActorUserId == Guid.Empty || string.IsNullOrWhiteSpace(request.Action))
+            return BadRequest();
+
+        try
+        {
+            var result = await _workflowEngine.CheckAuthorizationAsync(
+                workflowInstanceId,
+                request.TaskId,
+                request.Action,
+                request.ActorUserId,
+                cancellationToken);
+
+            return Ok(result);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Workflow resource not found",
+                Detail = exception.Message
+            });
+        }
     }
 
     /// <summary>Executes an action on a task belonging to a workflow instance.</summary>
-    /// <param name="workflowInstanceId">Identifier of the workflow instance.</param>
-    /// <param name="request">Task identifier and action to execute.</param>
-    /// <param name="cancellationToken">Request cancellation token.</param>
-    /// <returns>The updated workflow instance.</returns>
-    /// <response code="200">The action was executed and the updated workflow instance is returned.</response>
-    /// <response code="400">Request body is invalid.</response>
-    /// <response code="401">The caller is not authenticated.</response>
+    [Authorize(Policy = "WorkflowExecute")]
     [HttpPost("{workflowInstanceId:guid}/actions")]
     [ProducesResponseType(typeof(WorkflowInstanceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<WorkflowInstanceDto>> ExecuteActionAsync(
         Guid workflowInstanceId,
         [FromBody] ExecuteWorkflowActionRequest request,
         CancellationToken cancellationToken)
     {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return Unauthorized();
-        }
-
-        var userId = User.GetUserId();
+        if (request.ActorUserId == Guid.Empty || string.IsNullOrWhiteSpace(request.Action))
+            return BadRequest();
 
         var command = new ExecuteWorkflowActionCommand(
             workflowInstanceId,
             request.TaskId,
             request.Action,
-            userId);
+            request.ActorUserId);
 
-        var result = await _workflowEngine.ExecuteActionAsync(
-            command,
-            cancellationToken);
-
-        return Ok(result);
+        try
+        {
+            var result = await _workflowEngine.ExecuteActionAsync(command, cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Workflow resource not found",
+                Detail = exception.Message
+            });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Workflow action conflict",
+                Detail = exception.Message
+            });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Invalid workflow action request",
+                Detail = exception.Message
+            });
+        }
     }
 
     /// <summary>Checks whether the WorkflowEngine API is responding.</summary>
-    /// <returns>A simple API availability response and the current UTC timestamp.</returns>
     [HttpGet("ping")]
     [ProducesResponseType(typeof(PingResponse), StatusCodes.Status200OK)]
     public ActionResult<PingResponse> Ping()
