@@ -13,9 +13,10 @@ public sealed record StartWorkflowCommand
     public required string WorkflowDefinitionCode { get; init; }
 
     /// <summary>
-    /// Gets the authenticated user who initiated the workflow.
+    /// Gets the stable identifier of the authenticated calling service.
+    /// This value must be derived from the authenticated service principal.
     /// </summary>
-    public required Guid StartedBy { get; init; }
+    public required string StartedByService { get; init; }
     public required string BusinessType { get; init; }
     public required string BusinessReference { get; init; }
     public required string CorrelationId { get; init; }
