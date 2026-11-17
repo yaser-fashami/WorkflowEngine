@@ -77,6 +77,8 @@ public sealed class WorkflowInstance : BaseEntity
 
     public Guid? StartedBy { get; private set; }
 
+    public string? StartedByService { get; private set; }
+
     public IReadOnlyCollection<WorkflowTask> Tasks => _tasks.AsReadOnly();
 
     public static WorkflowInstance Create(
@@ -158,14 +160,9 @@ public sealed class WorkflowInstance : BaseEntity
         return task;
     }
 
-    public void Start(Guid startedBy)
+    public void Start(string startedByService)
     {
-        if (startedBy == Guid.Empty)
-        {
-            throw new ArgumentException(
-                "Started by user is required.",
-                nameof(startedBy));
-        }
+        ValidateServiceId(startedByService);
 
         if (Status != WorkflowInstanceStatus.Draft)
         {
@@ -175,7 +172,29 @@ public sealed class WorkflowInstance : BaseEntity
 
         Status = WorkflowInstanceStatus.Running;
         StartedAt = DateTimeOffset.UtcNow;
-        StartedBy = startedBy;
+        StartedByService = startedByService;
+    }
+
+    private static void ValidateServiceId(string serviceId)
+    {
+        if (string.IsNullOrWhiteSpace(serviceId) || serviceId.Length > 100)
+        {
+            throw new ArgumentException("ServiceId must contain 1 to 100 valid characters.", nameof(serviceId));
+        }
+
+        for (var index = 0; index < serviceId.Length; index++)
+        {
+            var character = serviceId[index];
+            var isLowercaseLetter = character is >= 'a' and <= 'z';
+            var isDigit = character is >= '0' and <= '9';
+            var isHyphen = character == '-';
+
+            if ((!isLowercaseLetter && !isDigit && !isHyphen) ||
+                ((index == 0 || index == serviceId.Length - 1) && isHyphen))
+            {
+                throw new ArgumentException("ServiceId must match ^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$.", nameof(serviceId));
+            }
+        }
     }
 
     public void MoveTo(Guid nodeId)
@@ -192,6 +211,16 @@ public sealed class WorkflowInstance : BaseEntity
 
     public void Complete(Guid performedBy)
     {
+        CompleteCore(performedBy);
+    }
+
+    public void CompleteAutomatically()
+    {
+        CompleteCore(completedBy: null);
+    }
+
+    private void CompleteCore(Guid? completedBy)
+    {
         if (Status != WorkflowInstanceStatus.Running)
         {
             throw new InvalidOperationException(
@@ -199,7 +228,7 @@ public sealed class WorkflowInstance : BaseEntity
         }
 
         Status = WorkflowInstanceStatus.Completed;
-        CompletedBy = performedBy;
+        CompletedBy = completedBy;
         CompletedAt = DateTimeOffset.UtcNow;
     }
 }
