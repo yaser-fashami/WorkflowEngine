@@ -113,13 +113,13 @@ public sealed class WorkflowsController : ControllerBase
     /// <summary>Checks whether the WorkflowEngine API is responding.</summary>
     /// <returns>A simple API availability response and the current UTC timestamp.</returns>
     [HttpGet("ping")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult Ping()
+    [ProducesResponseType(typeof(PingResponse), StatusCodes.Status200OK)]
+    public ActionResult<PingResponse> Ping()
     {
-        return Ok(new
+        return Ok(new PingResponse
         {
-            message = "API is running",
-            time = DateTime.UtcNow
+            Message = "API is running",
+            Time = DateTime.UtcNow
         });
     }
 }
