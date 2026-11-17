@@ -255,103 +255,126 @@ public sealed class WorkflowEngine : IWorkflowEngine
     }
 
 
-    public async Task<WorkflowInstanceDto> ExecuteActionAsync(ExecuteWorkflowActionCommand command, CancellationToken cancellationToken)
+    public async Task<AuthorizationCheckDto> CheckAuthorizationAsync(
+        Guid workflowInstanceId,
+        Guid taskId,
+        string action,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
     {
-        var instance =
-            await _instanceRepository
-                .GetByIdWithTasksAsync(
-                    command.WorkflowInstanceId,
-                    cancellationToken);
+        if (actorUserId == Guid.Empty)
+            throw new ArgumentException("Actor user id is required.", nameof(actorUserId));
+
+        var instance = await _instanceRepository.GetByIdWithTasksAsync(
+            workflowInstanceId,
+            cancellationToken);
 
         if (instance is null)
-        {
-            throw new InvalidOperationException(
-                $"Workflow instance {command.WorkflowInstanceId} not found.");
-        }
+            throw new KeyNotFoundException($"Workflow instance {workflowInstanceId} was not found.");
 
-        var task = instance.Tasks.SingleOrDefault(x => x.Id == command.TaskId);
-
+        var task = instance.Tasks.SingleOrDefault(x => x.Id == taskId);
         if (task is null)
-        {
-            throw new InvalidOperationException(
-                "Workflow task not found.");
-        }
+            throw new KeyNotFoundException($"Workflow task {taskId} was not found in workflow instance {workflowInstanceId}.");
 
         if (task.Status != WorkflowTaskStatus.Pending)
-        {
-            throw new InvalidOperationException(
-                "Workflow task is no longer pending.");
-        }
+            return new AuthorizationCheckDto(false, "TASK_NOT_PENDING", "Workflow task is not pending.");
 
-        var isAuthorized = await _taskAuthorizationService
-                .CanExecuteAsync(
-                    task,
-                    command.PerformedBy,
-                    cancellationToken);
-
-        if (!isAuthorized)
-        {
-            throw new UnauthorizedAccessException(
-                "User is not authorized to execute this task.");
-        }
-
-        var version = await _versionRepository
-                .GetByIdAsync(
-                    instance.WorkflowVersionId,
-                    cancellationToken);
+        var version = await _versionRepository.GetByIdAsync(
+            instance.WorkflowVersionId,
+            cancellationToken);
 
         if (version is null)
-        {
-            throw new InvalidOperationException(
-                "Workflow version not found.");
-        }
+            throw new KeyNotFoundException($"Workflow version {instance.WorkflowVersionId} was not found.");
 
-        var currentNode = version.Nodes
-                .SingleOrDefault(x =>
-                    x.Id == task.WorkflowNodeId);
-
+        var currentNode = version.Nodes.SingleOrDefault(x => x.Id == task.WorkflowNodeId);
         if (currentNode is null)
-        {
-            throw new InvalidOperationException(
-                "Current workflow node not found.");
-        }
-
-        var wasCompleted = instance.Status == WorkflowInstanceStatus.Completed;
+            throw new KeyNotFoundException($"Workflow node {task.WorkflowNodeId} was not found.");
 
         var context = BuildContext(instance);
+        var transition = await _transitionResolver.ResolveAsync(
+            currentNode,
+            action,
+            context,
+            cancellationToken);
+
+        if (transition is null)
+            return new AuthorizationCheckDto(false, "ACTION_NOT_AVAILABLE", "The requested action is not available for this task.");
+
+        var isAuthorized = await _taskAuthorizationService.CanExecuteAsync(
+            task,
+            actorUserId,
+            cancellationToken);
+
+        return isAuthorized
+            ? new AuthorizationCheckDto(true, "AUTHORIZED", "User is authorized to execute this action.")
+            : new AuthorizationCheckDto(false, "NOT_ASSIGNED", "User is not assigned to this task.");
+    }
+
+    public async Task<WorkflowInstanceDto> ExecuteActionAsync(
+        ExecuteWorkflowActionCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        if (command.PerformedBy == Guid.Empty)
+            throw new ArgumentException("PerformedBy is required.", nameof(command));
+
+        var instance = await _instanceRepository.GetByIdWithTasksAsync(
+            command.WorkflowInstanceId,
+            cancellationToken);
+
+        if (instance is null)
+            throw new KeyNotFoundException($"Workflow instance {command.WorkflowInstanceId} was not found.");
+
+        var task = instance.Tasks.SingleOrDefault(x => x.Id == command.TaskId);
+        if (task is null)
+            throw new KeyNotFoundException($"Workflow task {command.TaskId} was not found in workflow instance {command.WorkflowInstanceId}.");
+
+        if (task.Status != WorkflowTaskStatus.Pending)
+            throw new InvalidOperationException("Workflow task is no longer pending.");
+
+        var version = await _versionRepository.GetByIdAsync(
+            instance.WorkflowVersionId,
+            cancellationToken);
+
+        if (version is null)
+            throw new KeyNotFoundException($"Workflow version {instance.WorkflowVersionId} was not found.");
+
+        var currentNode = version.Nodes.SingleOrDefault(x => x.Id == task.WorkflowNodeId);
+        if (currentNode is null)
+            throw new KeyNotFoundException($"Workflow node {task.WorkflowNodeId} was not found.");
+
+        var wasCompleted = instance.Status == WorkflowInstanceStatus.Completed;
+        var context = BuildContext(instance);
+
+        // Resolve the requested action before mutating the task or workflow instance.
+        var transition = await _transitionResolver.ResolveAsync(
+            currentNode,
+            command.Action,
+            context,
+            cancellationToken);
+
+        if (transition is null)
+            throw new InvalidOperationException(
+                $"No valid transition found for node '{currentNode.Code}' and action '{command.Action}'.");
+
+        var targetNode = version.Nodes.SingleOrDefault(x => x.Id == transition.TargetNodeId);
+        if (targetNode is null)
+            throw new KeyNotFoundException(
+                $"Target node '{transition.TargetNodeId}' was not found in workflow version '{version.Id}'.");
+
+        // Re-check User Assignment at execution time; a prior authorization-check is not reusable.
+        var isAuthorized = await _taskAuthorizationService.CanExecuteAsync(
+            task,
+            command.PerformedBy,
+            cancellationToken);
+
+        if (!isAuthorized)
+            throw new UnauthorizedAccessException("User is not assigned to this task.");
 
         // First approver wins.
         task.Complete(command.PerformedBy);
-
-        var transition =
-            await _transitionResolver
-                .ResolveAsync(
-                    currentNode,
-                    command.Action,
-                    context,
-                    cancellationToken);
-
-        if (transition is null)
-        {
-            throw new InvalidOperationException(
-                $"No valid transition found " +
-                $"for node '{currentNode.Code}' " +
-                $"and action '{command.Action}'.");
-        }
-
         instance.MoveTo(transition.TargetNodeId);
-
-        var targetNode =
-            version.Nodes
-                .SingleOrDefault(x =>
-                    x.Id == transition.TargetNodeId);
-
-        if (targetNode is null)
-        {
-            throw new InvalidOperationException(
-                $"Target node '{transition.TargetNodeId}' " +
-                $"was not found.");
-        }
 
         await ExecuteNodeAsync(
             instance,
