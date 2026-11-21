@@ -6,6 +6,15 @@ using Workflow.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var authority = builder.Configuration["Authentication:Authority"];
+var audience = builder.Configuration["Authentication:Audience"];
+
+if (string.IsNullOrWhiteSpace(authority))
+    throw new InvalidOperationException("Authentication:Authority configuration is required.");
+
+if (string.IsNullOrWhiteSpace(audience))
+    throw new InvalidOperationException("Authentication:Audience configuration is required.");
+
 builder.Services.AddControllers();
 
 builder.Services
@@ -28,13 +37,8 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        var authority = builder.Configuration["Authentication:Authority"];
-        if (!string.IsNullOrWhiteSpace(authority))
-            options.Authority = authority;
-
-        var audience = builder.Configuration["Authentication:Audience"];
-        if (!string.IsNullOrWhiteSpace(audience))
-            options.Audience = audience;
+        options.Authority = authority;
+        options.Audience = audience;
 
         options.RequireHttpsMetadata = true;
         options.TokenValidationParameters = new TokenValidationParameters
