@@ -356,7 +356,6 @@ public sealed class WorkflowEngine : IWorkflowEngine
         if (currentNode is null)
             throw new KeyNotFoundException($"Workflow node {task.WorkflowNodeId} was not found.");
 
-        var wasCompleted = instance.Status == WorkflowInstanceStatus.Completed;
         var context = BuildContext(instance);
 
         // Re-check User Assignment at execution time; a prior authorization-check is not reusable.
@@ -396,7 +395,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             completedBy: command.PerformedBy,
             cancellationToken);
 
-        if (!wasCompleted && instance.Status == WorkflowInstanceStatus.Completed)
+        if (instance.Status == WorkflowInstanceStatus.Completed)
             await EnqueueWorkflowCompletedAsync(instance, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -423,6 +422,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
                     node,
                     context,
                     cancellationToken);
+
+        if (assignments.Any(assignment => assignment.Type is WorkflowAssignmentType.Role or WorkflowAssignmentType.Department))
+            throw new InvalidOperationException("Role and Department assignments are not supported in the current authorization phase.");
 
         foreach (var assignment in assignments)
         {
