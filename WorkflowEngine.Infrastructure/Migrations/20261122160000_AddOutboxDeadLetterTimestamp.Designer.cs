@@ -10,7 +10,8 @@ using Workflow.Infrastructure.Persistence;
 #nullable disable
 
 namespace WorkflowEngine.Infrastructure.Migrations
-{\npartial class AddOutboxDeadLetterTimestamp
+{
+    partial class AddOutboxDeadLetterTimestamp
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
