@@ -49,7 +49,9 @@ public sealed class WorkflowOutboxClaimRepository : IWorkflowOutboxClaimReposito
         var affected = await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE [dbo].[OutboxMessages]
             SET [Status] = CASE WHEN [AttemptCount] >= {maxAttempts} THEN {(int)OutboxMessageStatus.DeadLetter} ELSE {(int)OutboxMessageStatus.Pending} END,
-                [NextAttemptAtUtc] = {nextAttemptAtUtc}, [LastError] = {safeError}, [LeaseToken] = NULL, [LeaseExpiresAtUtc] = NULL
+                [NextAttemptAtUtc] = {nextAttemptAtUtc}, [LastError] = {safeError},
+                [DeadLetterAtUtc] = CASE WHEN [AttemptCount] >= {maxAttempts} THEN SYSUTCDATETIME() ELSE [DeadLetterAtUtc] END,
+                [LeaseToken] = NULL, [LeaseExpiresAtUtc] = NULL
             WHERE [EventId] = {eventId} AND [LeaseToken] = {leaseToken} AND [Status] = {(int)OutboxMessageStatus.Processing}
               AND [LeaseExpiresAtUtc] > SYSUTCDATETIME();
             """, cancellationToken);
@@ -61,7 +63,8 @@ public sealed class WorkflowOutboxClaimRepository : IWorkflowOutboxClaimReposito
         var safeError = NormalizeError(error);
         var affected = await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE [dbo].[OutboxMessages]
-            SET [Status] = {(int)OutboxMessageStatus.DeadLetter}, [LastError] = {safeError}, [LeaseToken] = NULL, [LeaseExpiresAtUtc] = NULL
+            SET [Status] = {(int)OutboxMessageStatus.DeadLetter}, [LastError] = {safeError}, [DeadLetterAtUtc] = SYSUTCDATETIME(),
+                [LeaseToken] = NULL, [LeaseExpiresAtUtc] = NULL
             WHERE [EventId] = {eventId} AND [LeaseToken] = {leaseToken} AND [Status] = {(int)OutboxMessageStatus.Processing}
               AND [LeaseExpiresAtUtc] > SYSUTCDATETIME();
             """, cancellationToken);
