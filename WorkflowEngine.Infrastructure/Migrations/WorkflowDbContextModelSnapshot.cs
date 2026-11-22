@@ -36,6 +36,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
                     b.Property<string>("Payload").IsRequired().HasColumnType("nvarchar(max)");
                     b.Property<DateTimeOffset?>("PublishedAtUtc").HasColumnType("datetimeoffset");
                     b.Property<string>("LastError").HasMaxLength(4000).HasColumnType("nvarchar(4000)");
+                    b.Property<DateTimeOffset?>("DeadLetterAtUtc").HasColumnType("datetimeoffset");
                     b.Property<int>("Status").HasColumnType("int");
                     b.HasKey("EventId");
                     b.HasIndex("Status", "NextAttemptAtUtc").HasDatabaseName("IX_OutboxMessages_Status_NextAttemptAtUtc");
