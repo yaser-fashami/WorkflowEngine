@@ -10,9 +10,7 @@ using Workflow.Infrastructure.Persistence;
 #nullable disable
 
 namespace WorkflowEngine.Infrastructure.Migrations
-{
-    [DbContext(typeof(WorkflowDbContext))]
-    partial class AddOutboxTotalAttemptCount
+{\npartial class AddOutboxTotalAttemptCount
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
