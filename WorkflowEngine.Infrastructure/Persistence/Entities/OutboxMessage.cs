@@ -11,6 +11,8 @@ public sealed class OutboxMessage
     public DateTimeOffset OccurredAtUtc { get; private set; }
     public DateTimeOffset NextAttemptAtUtc { get; private set; }
     public DateTimeOffset? LeaseExpiresAtUtc { get; private set; }
+    public Guid? LeaseToken { get; private set; }
+    public DateTimeOffset? LastAttemptAtUtc { get; private set; }
     public DateTimeOffset? PublishedAtUtc { get; private set; }
     public int AttemptCount { get; private set; }
     public OutboxMessageStatus Status { get; private set; }
