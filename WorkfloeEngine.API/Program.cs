@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Workflow.Infrastructure;
+using WorkflowEngine.API.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +84,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddWorkflowApplication();
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<WorkflowOutboxReaperHostedService>();
 
 var app = builder.Build();
 
