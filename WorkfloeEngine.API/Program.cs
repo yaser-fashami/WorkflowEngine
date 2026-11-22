@@ -1,20 +1,50 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using WorkflowEngine.API.Authentication;
 using Microsoft.IdentityModel.Tokens;
 using Workflow.Infrastructure;
 using WorkflowEngine.API.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var authority = builder.Configuration["Authentication:Authority"];
-var audience = builder.Configuration["Authentication:Audience"];
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services
+        .AddAuthentication(DevelopmentBearerAuthenticationHandler.SchemeName)
+        .AddScheme<AuthenticationSchemeOptions, DevelopmentBearerAuthenticationHandler>(
+            DevelopmentBearerAuthenticationHandler.SchemeName,
+            _ => { });
+}
+else
+{
+    var authority = builder.Configuration["Authentication:Authority"];
+    var audience = builder.Configuration["Authentication:Audience"];
 
-if (string.IsNullOrWhiteSpace(authority))
-    throw new InvalidOperationException("Authentication:Authority configuration is required.");
+    if (string.IsNullOrWhiteSpace(authority))
+        throw new InvalidOperationException("Authentication:Authority configuration is required outside Development.");
 
-if (string.IsNullOrWhiteSpace(audience))
-    throw new InvalidOperationException("Authentication:Audience configuration is required.");
+    if (string.IsNullOrWhiteSpace(audience))
+        throw new InvalidOperationException("Authentication:Audience configuration is required outside Development.");
+
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = authority;
+            options.Audience = audience;
+            options.RequireHttpsMetadata = true;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+        });
+}
 
 builder.Services.AddControllers();
 
@@ -85,6 +115,14 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddWorkflowApplication();
 builder.Services.AddWorkflowInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<WorkflowOutboxReaperHostedService>();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHttpClient("WorkflowCallback", client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+    builder.Services.AddHostedService<WorkflowOutboxDispatcherHostedService>();
+}
 
 var app = builder.Build();
 
