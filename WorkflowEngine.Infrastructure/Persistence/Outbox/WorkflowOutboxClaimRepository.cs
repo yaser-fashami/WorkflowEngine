@@ -24,6 +24,7 @@ public sealed class WorkflowOutboxClaimRepository : IWorkflowOutboxClaimReposito
             UPDATE [Candidates]
             SET [Status] = {(int)OutboxMessageStatus.Processing}, [LeaseToken] = NEWID(), [LeaseExpiresAtUtc] = {leaseExpiresAtUtc},
                 [AttemptCount] = CASE WHEN [Status] = {(int)OutboxMessageStatus.Pending} THEN [AttemptCount] + 1 ELSE [AttemptCount] END,
+                [TotalAttemptCount] = CASE WHEN [Status] = {(int)OutboxMessageStatus.Pending} THEN [TotalAttemptCount] + 1 ELSE [TotalAttemptCount] END,
                 [LastAttemptAtUtc] = CASE WHEN [Status] = {(int)OutboxMessageStatus.Pending} THEN {nowUtc} ELSE [LastAttemptAtUtc] END
             OUTPUT inserted.*;
             """).AsNoTracking().ToListAsync(cancellationToken);
