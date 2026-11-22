@@ -18,6 +18,8 @@ public partial class AddOutboxTotalAttemptCount : Migration
             type: "int",
             nullable: false,
             defaultValue: 0);
+
+        migrationBuilder.Sql("UPDATE [dbo].[OutboxMessages] SET [TotalAttemptCount] = [AttemptCount];");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
