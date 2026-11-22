@@ -15,6 +15,7 @@ public sealed class OutboxMessage
     public DateTimeOffset? LastAttemptAtUtc { get; private set; }
     public DateTimeOffset? PublishedAtUtc { get; private set; }
     public int AttemptCount { get; private set; }
+    public int TotalAttemptCount { get; private set; }
     public OutboxMessageStatus Status { get; private set; }
     public string? LastError { get; private set; }
 
@@ -28,7 +29,7 @@ public sealed class OutboxMessage
         {
             EventId = eventId, EventType = eventType, Payload = payload,
             OccurredAtUtc = occurredAtUtc, NextAttemptAtUtc = occurredAtUtc,
-            Status = OutboxMessageStatus.Pending, AttemptCount = 0
+            Status = OutboxMessageStatus.Pending, AttemptCount = 0, TotalAttemptCount = 0
         };
     }
 }
