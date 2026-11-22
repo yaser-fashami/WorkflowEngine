@@ -10,7 +10,8 @@ using Workflow.Infrastructure.Persistence;
 #nullable disable
 
 namespace WorkflowEngine.Infrastructure.Migrations
-{\npartial class AddOutboxTotalAttemptCount
+{
+    partial class AddOutboxTotalAttemptCount
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
