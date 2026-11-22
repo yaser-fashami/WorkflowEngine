@@ -64,24 +64,6 @@ builder.Services
     })
     .AddOpenApi();
 
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = authority;
-        options.Audience = audience;
-
-        options.RequireHttpsMetadata = true;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.FromMinutes(1)
-        };
-    });
-
 static bool HasScope(AuthorizationHandlerContext context, string requiredScope)
 {
     var scopeClaim = context.User.FindFirst("scope")?.Value;
