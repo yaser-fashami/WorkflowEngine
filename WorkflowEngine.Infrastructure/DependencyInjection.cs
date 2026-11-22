@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Workflow.Application.Abstractions;
@@ -23,6 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<IWorkflowUnitOfWork,WorkflowUnitOfWork>();
         services.AddScoped<IWorkflowOutbox, WorkflowOutboxRepository>();
+        services.AddScoped<IWorkflowOutboxClaimRepository, WorkflowOutboxClaimRepository>();
         services.AddScoped<IWorkflowVersionRepository,WorkflowVersionRepository>();
         services.AddScoped<IWorkflowInstanceRepository,WorkflowInstanceRepository>();
         services.AddScoped<IWorkflowDefinitionRepository,WorkflowDefinitionRepository>();
