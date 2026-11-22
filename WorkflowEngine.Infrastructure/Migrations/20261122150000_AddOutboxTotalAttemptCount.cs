@@ -8,7 +8,7 @@ namespace WorkflowEngine.Infrastructure.Migrations;
 
 [DbContext(typeof(WorkflowDbContext))]
 [Migration("20261122150000_AddOutboxTotalAttemptCount")]
-public sealed class AddOutboxTotalAttemptCount : Migration
+public partial class AddOutboxTotalAttemptCount : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
