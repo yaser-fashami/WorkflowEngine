@@ -67,6 +67,41 @@ public sealed class WorkflowOutboxClaimRepository : IWorkflowOutboxClaimReposito
             """, cancellationToken);
         return affected == 1;
     }
+    public async Task<bool> ReplayDeadLetterAsync(Guid eventId, DateTimeOffset replayedAtUtc, CancellationToken cancellationToken)
+    {
+        if (eventId == Guid.Empty) throw new ArgumentException("EventId is required.", nameof(eventId));
+        EnsureUtc(replayedAtUtc, nameof(replayedAtUtc));
+        var affected = await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE [dbo].[OutboxMessages]
+            SET [Status] = {(int)OutboxMessageStatus.Pending}, [AttemptCount] = 0,
+                [NextAttemptAtUtc] = {replayedAtUtc}, [LeaseToken] = NULL, [LeaseExpiresAtUtc] = NULL
+            WHERE [EventId] = {eventId} AND [Status] = {(int)OutboxMessageStatus.DeadLetter};
+            """, cancellationToken);
+        return affected == 1;
+    }
+    public async Task<int> ReapExpiredLeasesAsync(int batchSize, int maxAttempts, DateTimeOffset nowUtc, CancellationToken cancellationToken)
+    {
+        if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize));
+        if (maxAttempts <= 0) throw new ArgumentOutOfRangeException(nameof(maxAttempts));
+        EnsureUtc(nowUtc, nameof(nowUtc));
+        return await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+            ;WITH [Candidates] AS
+            (
+                SELECT TOP ({batchSize}) *
+                FROM [dbo].[OutboxMessages] WITH (UPDLOCK, READPAST, READCOMMITTEDLOCK)
+                WHERE [Status] = {(int)OutboxMessageStatus.Processing}
+                    AND [LeaseExpiresAtUtc] <= {nowUtc}
+                    AND [AttemptCount] >= {maxAttempts}
+                ORDER BY [LeaseExpiresAtUtc], [OccurredAtUtc], [EventId]
+            )
+            UPDATE [Candidates]
+            SET [Status] = {(int)OutboxMessageStatus.DeadLetter},
+                [DeadLetterAtUtc] = {nowUtc},
+                [LastError] = N'Lease expired after reaching the maximum attempt count.',
+                [LeaseToken] = NULL,
+                [LeaseExpiresAtUtc] = NULL;
+            """, cancellationToken);
+    }
     private static void ValidateClaimArguments(int batchSize, DateTimeOffset nowUtc, DateTimeOffset leaseExpiresAtUtc, int maxAttempts)
     {
         if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize));
