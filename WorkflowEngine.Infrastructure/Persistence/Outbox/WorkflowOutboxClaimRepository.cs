@@ -35,15 +35,17 @@ public sealed class WorkflowOutboxClaimRepository : IWorkflowOutboxClaimReposito
                         WITH (UPDLOCK, READPAST, READCOMMITTEDLOCK)
                     WHERE
                         (
-                            [Status] = {(int)OutboxMessageStatus.Pending}
-                            AND [NextAttemptAtUtc] <= {nowUtc}
+                            (
+                                [Status] = {(int)OutboxMessageStatus.Pending}
+                                AND [NextAttemptAtUtc] <= {nowUtc}
+                            )
+                            OR
+                            (
+                                [Status] = {(int)OutboxMessageStatus.Processing}
+                                AND [LeaseExpiresAtUtc] <= {nowUtc}
+                            )
                         )
-                        OR
-                        (
-                            [Status] = {(int)OutboxMessageStatus.Processing}
-                            AND [LeaseExpiresAtUtc] <= {nowUtc}
-                        )
-                    AND [AttemptCount] < {maxAttempts}
+                        AND [AttemptCount] < {maxAttempts}
                     ORDER BY
                         CASE
                             WHEN [Status] = {(int)OutboxMessageStatus.Pending}
