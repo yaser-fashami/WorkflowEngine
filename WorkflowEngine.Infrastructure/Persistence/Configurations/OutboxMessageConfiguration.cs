@@ -16,6 +16,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(x => x.OccurredAtUtc).IsRequired();
         builder.Property(x => x.NextAttemptAtUtc).IsRequired();
         builder.Property(x => x.AttemptCount).IsRequired();
+        builder.Property(x => x.TotalAttemptCount).IsRequired();
         builder.Property(x => x.Status).HasConversion<int>().IsRequired();
         builder.Property(x => x.LeaseToken);
         builder.Property(x => x.LeaseExpiresAtUtc);
