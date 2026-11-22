@@ -22,6 +22,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(x => x.LeaseExpiresAtUtc);
         builder.Property(x => x.LastAttemptAtUtc);
         builder.Property(x => x.LastError).HasMaxLength(4000);
+        builder.Property(x => x.DeadLetterAtUtc);
         builder.HasIndex(x => new { x.Status, x.NextAttemptAtUtc })
             .HasDatabaseName("IX_OutboxMessages_Status_NextAttemptAtUtc");
         builder.HasIndex(x => new { x.Status, x.LeaseExpiresAtUtc })
