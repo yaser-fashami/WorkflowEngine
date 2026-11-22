@@ -8,7 +8,7 @@ namespace WorkflowEngine.Infrastructure.Migrations;
 
 [DbContext(typeof(WorkflowDbContext))]
 [Migration("20261122160000_AddOutboxDeadLetterTimestamp")]
-public sealed class AddOutboxDeadLetterTimestamp : Migration
+public partial class AddOutboxDeadLetterTimestamp : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
