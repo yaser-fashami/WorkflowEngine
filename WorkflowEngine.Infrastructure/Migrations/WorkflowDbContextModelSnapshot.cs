@@ -26,6 +26,7 @@ namespace WorkflowEngine.Infrastructure.Migrations
                 {
                     b.Property<Guid>("EventId").HasColumnType("uniqueidentifier");
                     b.Property<int>("AttemptCount").HasColumnType("int");
+                    b.Property<int>("TotalAttemptCount").HasColumnType("int");
                     b.Property<string>("EventType").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
                     b.Property<DateTimeOffset?>("LastAttemptAtUtc").HasColumnType("datetimeoffset");
                     b.Property<DateTimeOffset?>("LeaseExpiresAtUtc").HasColumnType("datetimeoffset");
