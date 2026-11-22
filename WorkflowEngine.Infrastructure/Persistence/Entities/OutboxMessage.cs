@@ -19,6 +19,7 @@ public sealed class OutboxMessage
     public OutboxMessageStatus Status { get; private set; }
     public string? LastError { get; private set; }
     public DateTimeOffset? DeadLetterAtUtc { get; private set; }
+    public DateTimeOffset? DeadLetterAtUtc { get; private set; }
 
     public static OutboxMessage Create(Guid eventId, string eventType, string payload, DateTimeOffset occurredAtUtc)
     {
